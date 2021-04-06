@@ -21,7 +21,7 @@ SRCS			=	famine.c
 
 # COMPILED_SOURCES #
 OBJS 		=	$(SRCS:%.c=$(DIR_OBJS)%.o)
-NAME 		=	famine
+NAME 		=	Famine
 
 ## RULES ##
 all:			$(NAME)
@@ -32,7 +32,7 @@ debug:			all
 # VARIABLES RULES #
 $(NAME):		$(OBJS)
 				@printf "\033[2K\r$(_BLUE) All files compiled into '$(DIR_OBJS)'. $(_END)✅\n"
-				@clang $(CC_FLAGS) -I $(DIR_HEADERS) $(OBJS) -o $(NAME)
+				@gcc $(CC_FLAGS) -I $(DIR_HEADERS) $(OBJS) -o $(NAME)
 				@printf "\033[2K\r$(_GREEN) Executable '$(NAME)' created. $(_END)✅\n"
 
 # COMPILED_SOURCES RULES #
@@ -40,7 +40,7 @@ $(OBJS):		| $(DIR_OBJS)
 
 $(DIR_OBJS)%.o: $(DIR_SRCS)%.c
 				@printf "\033[2K\r $(_YELLOW)Compiling $< $(_END)⌛ "
-				@clang $(CC_FLAGS) -I $(DIR_HEADERS) -c $< -o $@
+				@gcc $(CC_FLAGS) -I $(DIR_HEADERS) -c $< -o $@
 
 $(DIR_OBJS):
 				@mkdir -p $(DIR_OBJS)
