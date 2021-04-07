@@ -30,6 +30,7 @@ debug:			CC_FLAGS += -g3 -fsanitize=address
 debug:			all
 
 # VARIABLES RULES #
+
 $(NAME):		$(OBJS)
 				@printf "\033[2K\r$(_BLUE) All files compiled into '$(DIR_OBJS)'. $(_END)✅\n"
 				@gcc $(CC_FLAGS) -I $(DIR_HEADERS) $(OBJS) -o $(NAME)

