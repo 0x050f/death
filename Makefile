@@ -17,7 +17,9 @@ DIR_SRCS		=	./srcs/
 DIR_OBJS		=	./compiled_srcs/
 
 # FILES #
-SRCS			=	famine.c
+SRCS			=	famine.c \
+					elf.c \
+					debug.c
 
 # COMPILED_SOURCES #
 OBJS 		=	$(SRCS:%.c=$(DIR_OBJS)%.o)
@@ -26,8 +28,8 @@ NAME 		=	Famine
 ## RULES ##
 all:			$(NAME)
 
-debug:			CC_FLAGS += -g3 -fsanitize=address
-debug:			all
+debug:			CC_FLAGS += -g3 -fsanitize=address -DDEBUG=1
+debug:			clean all
 
 # VARIABLES RULES #
 
