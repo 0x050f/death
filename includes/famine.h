@@ -1,20 +1,25 @@
 #ifndef FAMINE_H
 # define FAMINE_H
 
+#define _GNU_SOURCE
+
 # include <dirent.h>
 # include <elf.h>
 # include <errno.h>
 # include <fcntl.h>
+# include <libgen.h>
 # include <stdio.h>
 # include <stdlib.h>
 # include <string.h>
 # include <sys/mman.h>
 # include <unistd.h>
 
+# define SIGNATURE "Famine version 1.0 (c)oded by lmartin"
 # define CORRUPTED_FILE -1
 
 typedef struct		s_elf
 {
+	char			*filename;
 	void			*addr;
 	long			size;
 	Elf64_Ehdr		*header;
@@ -26,7 +31,10 @@ typedef struct		s_elf
 
 /* elf.c */
 int			init_elf(t_elf *elf, void *addr, long size);
+int			check_magic_elf(void *addr);
 
+/* utils.c */
+void	*ft_memmem(const void *l, size_t l_len, const void *s, size_t s_len);
 
 /* DEBUG */
 
