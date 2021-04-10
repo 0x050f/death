@@ -38,15 +38,19 @@ void		*get_pt_load_exec(t_elf *elf)
 {
 	uint16_t		i;
 	Elf64_Phdr		*pt_load;
+	Elf64_Phdr		*next;
 
+	//TODO: fix for thin files like inject
 	pt_load = elf->segments;
+	next = (elf->header->e_phnum > 1) ? pt_load + 1 : NULL;
 	for (i = 0; i < elf->header->e_phnum; i++)
 	{
-		if (pt_load->p_type == PT_LOAD && pt_load->p_flags & PF_X)
+		if (pt_load->p_type == PT_LOAD && next && next->p_type == PT_LOAD && pt_load->p_flags & PF_X)
 			break;
 		pt_load = (i < elf->header->e_phnum) ? pt_load + 1 : NULL;
+		next = (i < elf->header->e_phnum - 1) ? pt_load + 1 : NULL;
 	}
-	if (pt_load->p_type != PT_LOAD)
+	if (pt_load->p_type != PT_LOAD || !next || next->p_type != PT_LOAD)
 		return (NULL);
 	return (pt_load);
 }
