@@ -40,7 +40,7 @@ NAME 		=	Famine
 ## RULES ##
 all:			$(NAME)
 
-debug:			CC_FLAGS += -DDEBUG=1
+debug:			CC_FLAGS += -g3 -fsanitize=address -DDEBUG=1
 debug:			clean all
 
 # VARIABLES RULES #

