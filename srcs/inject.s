@@ -12,6 +12,7 @@ _inject:
 	sub rdx, [rel vaddr]
 	sub rax, rdx
 	add rax, [rel entry]
+	pop rdx
 	jmp rax
 
 _params:
