@@ -52,6 +52,10 @@ void	*add_padding_sections(t_elf *elf, t_elf *virus_elf, void *src, void **dst, 
 
 /* utils.c */
 void	*ft_memmem(const void *l, size_t l_len, const void *s, size_t s_len);
+size_t	ft_strlen(const char *s);
+int		ft_strcmp(const char *s1, const char *s2);
+void	*ft_memset(void *b, int c, size_t len);
+void	*ft_memcpy(void *dst, const void *src, size_t n);
 
 /* DEBUG */
 

