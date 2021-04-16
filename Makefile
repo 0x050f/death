@@ -21,6 +21,7 @@ DIR_OBJS_ASM	=	./compiled_srcs/
 SRCS			=	famine.c \
 					elf.c \
 					padding.c \
+					syscall.c \
 					utils.c \
 					debug.c
 SRCS_ASM		=	inject.s
