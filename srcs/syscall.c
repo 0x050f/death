@@ -2,6 +2,14 @@
 
 #define _unused __attribute__ ((unused))
 
+inline int		__open(_unused const char *pathname, _unused int flags)
+{
+	asm (".intel_syntax noprefix\n"
+			"mov rax, 2\n"
+			"syscall\n"
+			".att_syntax prefix\n");
+}
+
 inline int		__close(_unused int fd)
 {
 	asm (".intel_syntax noprefix\n"

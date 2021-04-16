@@ -51,6 +51,7 @@ void	*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst, 
 void	*add_padding_sections(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
 
 /* syscall.c */
+int		__open(const char *pathname, int flags);
 int		__close(int fd);
 void	__exit(int status);
 void	*__mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);

