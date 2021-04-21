@@ -137,12 +137,22 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 	}
 }
 
+typedef struct s_linux_dirent
+{
+	long   d_ino;
+	off_t  d_off;
+	unsigned short d_reclen;
+	char   d_name[];
+}				t_linux_dirent;
+
 void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 {
-	DIR				*dir;
-    struct			dirent *d;
+//	DIR				*dir;
+//	struct			dirent *d;
 	char			new_path[ft_strlen(path) + ft_strlen(d_name) + 2];
+	char			buffer[1024];
 	struct stat		statbuf;
+	int				fd;
 
 	ft_strcpy(new_path, path);
 	if (strlen(d_name))
@@ -150,9 +160,50 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 	ft_strcat(new_path, d_name);
 	stat(new_path, &statbuf);
 	if ((statbuf.st_mode & S_IFMT) == S_IFDIR)
+	{
 		printf("%s: DIRECTORY\n", new_path);
+		fd =  __open(new_path, O_RDONLY | O_DIRECTORY);
+		if (fd > 0)
+		{
+			int		nread;
+			while ((nread = syscall(78, fd, buffer, 1024)) > 0)
+			{
+				printf("==============> %s <================\n", new_path);
+				long					bpos;
+				t_linux_dirent			*linux_dir;
+//				printf("nread %d\n", nread);
+				for (bpos = 0; bpos < nread;)
+				{
+					linux_dir = (void *)buffer + bpos;
+					 printf("%8ld  ", linux_dir->d_ino);
+					char d_type = *(buffer + bpos + linux_dir->d_reclen - 1);
+					printf("%-10s ", (d_type == DT_REG) ?  "regular" :
+									(d_type == DT_DIR) ?  "directory" :
+									(d_type == DT_FIFO) ? "FIFO" :
+									(d_type == DT_SOCK) ? "socket" :
+									(d_type == DT_LNK) ?  "symlink" :
+									(d_type == DT_BLK) ?  "block dev" :
+									(d_type == DT_CHR) ?  "char dev" : "???");
+					printf("%4d %10jd  %s\n", linux_dir->d_reclen,
+					(intmax_t) linux_dir->d_off, linux_dir->d_name);
+					bpos = linux_dir->d_off;
+				}
+				for (bpos = 0; bpos < nread;)
+				{
+					linux_dir = (void *)buffer + bpos;
+					if (ft_strcmp(linux_dir->d_name, ".") && ft_strcmp(linux_dir->d_name, ".."))
+						moving_through_path(virus_elf, new_path, linux_dir->d_name);
+					bpos = linux_dir->d_off;
+				}
+			}
+//			printf("nread %d\n", nread);
+		}
+		__close(fd);
+	}
 	else
 		printf("%s: %d\n", new_path, statbuf.st_mode);
+
+	/*
 	dir = opendir(new_path);
 	if (dir)
 	{
@@ -170,6 +221,7 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 	}
 	else if (DEBUG)
 		debug_print_error(0, virus_elf->filename, path);
+	*/
 }
 
 int		main(int argc, char *argv[])
