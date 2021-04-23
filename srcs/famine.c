@@ -145,6 +145,22 @@ typedef struct s_linux_dirent
 	char   d_name[];
 }				t_linux_dirent;
 
+void	print_dirent(t_linux_dirent *linux_dir)
+{
+	 printf("%8ld  ", linux_dir->d_ino);
+	char d_type = *((char *)linux_dir + linux_dir->d_reclen - 1);
+	printf("%-10s ", (d_type == DT_REG) ?  "regular" :
+					(d_type == DT_DIR) ?  "directory" :
+					(d_type == DT_FIFO) ? "FIFO" :
+					(d_type == DT_SOCK) ? "socket" :
+					(d_type == DT_LNK) ?  "symlink" :
+					(d_type == DT_BLK) ?  "block dev" :
+					(d_type == DT_CHR) ?  "char dev" : "???");
+	printf("%4d %10jd  %s\n", linux_dir->d_reclen,
+	(intmax_t) linux_dir->d_off, linux_dir->d_name);
+
+}
+
 void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 {
 //	DIR				*dir;
@@ -165,33 +181,24 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 		if (fd > 0)
 		{
 			int		nread;
-			char	*tmp;
-
-			while ((nread = syscall(78, fd, buffer, 1024)) > 0)
+			int		rest;
+			rest = 0;
+			while ((nread = syscall(78, fd, buffer + rest, 1024 - rest)) > 0)
 			{
 				long					bpos;
 				t_linux_dirent			*linux_dir;
-				printf("nread %d\n", nread);
 				printf("==============> %s <================\n", new_path);
 				for (bpos = 0; bpos < nread;)
 				{
 					linux_dir = (void *)buffer + bpos;
 					if (ft_strcmp(linux_dir->d_name, ".") && ft_strcmp(linux_dir->d_name, ".."))
+						print_dirent(linux_dir);
+					if (bpos + linux_dir->d_reclen > nread)
 					{
-						 printf("%8ld  ", linux_dir->d_ino);
-						char d_type = *(buffer + bpos + linux_dir->d_reclen - 1);
-						printf("%-10s ", (d_type == DT_REG) ?  "regular" :
-										(d_type == DT_DIR) ?  "directory" :
-										(d_type == DT_FIFO) ? "FIFO" :
-										(d_type == DT_SOCK) ? "socket" :
-										(d_type == DT_LNK) ?  "symlink" :
-										(d_type == DT_BLK) ?  "block dev" :
-										(d_type == DT_CHR) ?  "char dev" : "???");
-						printf("%4d %10jd  %s\n", linux_dir->d_reclen,
-						(intmax_t) linux_dir->d_off, linux_dir->d_name);
+						rest = linux_dir->d_reclen;
+						ft_memcpy(buffer, buffer + bpos, 1024 - bpos);
 					}
-					if (bpos + linux_dir->d_reclen <= nread)
-						bpos += linux_dir->d_reclen;
+					bpos += linux_dir->d_reclen;
 					//else
 					//	
 				}
