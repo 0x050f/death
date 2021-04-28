@@ -53,14 +53,6 @@ int		check_magic_elf(void *addr);
 void	*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
 void	*add_padding_sections(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
 
-/* syscall.c */
-int		__open(const char *pathname, int flags);
-int		__close(int fd);
-void	__exit(int status);
-void	*__mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
-int		__munmap(void *addr, size_t length);
-int		__getdents(unsigned int fd, t_linux_dirent *dirp, unsigned int count);
-
 /* utils.c */
 void	*ft_memmem(const void *l, size_t l_len, const void *s, size_t s_len);
 size_t	ft_strlen(const char *s);

