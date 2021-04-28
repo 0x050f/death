@@ -1,6 +1,15 @@
-#include <unistd.h>
+#include "syscall.h"
 
 #define _unused __attribute__ ((unused))
+
+inline int		__getdents(_unused unsigned int fd,
+_unused t_linux_dirent *dirp, _unused unsigned int count)
+{
+	asm (".intel_syntax noprefix\n"
+			"mov rax, 78\n"
+			"syscall\n"
+			".att_syntax prefix\n");
+}
 
 inline int		__open(_unused const char *pathname, _unused int flags)
 {
@@ -35,7 +44,7 @@ _unused int prot, _unused int flags, _unused int fd, _unused off_t offset)
 			".att_syntax prefix\n");
 }
 
-inline int		__munmap(_unused void *addr, _unused size_t length)
+inline int		__munmap(_unused t_linux_dirent *addr, _unused size_t length)
 {
 	asm (".intel_syntax noprefix\n"
 			"mov rax, 11\n"

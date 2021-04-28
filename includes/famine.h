@@ -15,6 +15,8 @@
 # include <sys/stat.h>
 # include <unistd.h>
 
+# include "syscall.h"
+
 # ifndef INJECT
 #  define INJECT
 # endif
@@ -57,6 +59,7 @@ int		__close(int fd);
 void	__exit(int status);
 void	*__mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 int		__munmap(void *addr, size_t length);
+int		__getdents(unsigned int fd, t_linux_dirent *dirp, unsigned int count);
 
 /* utils.c */
 void	*ft_memmem(const void *l, size_t l_len, const void *s, size_t s_len);

