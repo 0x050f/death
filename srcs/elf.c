@@ -70,8 +70,9 @@ int			init_elf(t_elf *elf, void *addr, long size)
 	elf->pt_load = get_pt_load_exec(elf);
 	if (!elf->pt_load)
 		return (CORRUPTED_FILE);
-	if (DEBUG)
+	#ifdef DEBUG
 		debug_print_elf(elf);
+	#endif
 	return (0);
 }
 

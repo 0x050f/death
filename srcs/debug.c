@@ -1,4 +1,5 @@
 #include "famine.h"
+
 void	print_color(char *color, char *str)
 {
 	syscall_write(STDOUT_FILENO, color, ft_strlen(color));

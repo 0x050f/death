@@ -22,8 +22,8 @@ SRCS			=	famine.c \
 					elf.c \
 					padding.c \
 					syscall.c \
-					utils.c \
-					debug.c
+					utils.c
+DEBUG			=	debug.c
 SRCS_ASM		=	inject.s
 
 
@@ -38,11 +38,13 @@ OBJS 		=	$(SRCS:%.c=$(DIR_OBJS)%.o)
 OBJS_ASM	=	$(SRCS_ASM:%.s=$(DIR_OBJS_ASM)%.o)
 NAME 		=	Famine
 
-## RULES ##
-all:			$(NAME)
+ifneq (,$(filter debug,$(MAKECMDGOALS)))
+	CC_FLAGS += -DDEBUG
+	SRCS += $(DEBUG)
+endif
 
-debug:			CC_FLAGS += -DDEBUG=1
-debug:			clean all
+## RULES ##
+all debug:		$(NAME)
 
 # VARIABLES RULES #
 

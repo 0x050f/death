@@ -9,12 +9,6 @@
 # define _BLUE		"\e[34m"
 # define _END		"\e[0m"
 
-# ifndef DEBUG
-#  define DEBUG 0
-# endif
-
-# define CORRUPTED_FILE -1
-
 void	debug_print_error(int code, char *prg, char *input);
 void	debug_print_elf(t_elf *elf);
 void	debug_print_args(int argc, char *argv[]);
