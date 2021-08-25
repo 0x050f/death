@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: download nasm
+      run: apt-get install nasm
     - name: configure
       run: ./configure
     - name: make
