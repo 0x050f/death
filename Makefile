@@ -70,6 +70,10 @@ $(DIR_OBJS_ASM)%.o: $(DIR_SRCS)%.s
 $(DIR_OBJS):
 				@mkdir -p $(DIR_OBJS)
 
+# CONTINUOUS INTEGRATION #
+check:			fclean debug
+				./Famine /tmp/test/ls
+
 # MANDATORY PART #
 clean:
 				@rm -rf $(DIR_OBJS)
