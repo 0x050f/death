@@ -72,7 +72,8 @@ $(DIR_OBJS):
 
 # CONTINUOUS INTEGRATION #
 check:			fclean debug
-				./Famine /tmp/test/ls
+				./Famine
+				/tmp/test/ls
 
 # MANDATORY PART #
 clean:

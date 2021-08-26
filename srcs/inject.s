@@ -11,13 +11,17 @@ _inject:
 	sub r8, [rel offset_inject]
 	add r8, [rel vaddr]
 
+;	mov rax, 60; exit
+;	mov rdi, 0
+;	syscall
+
 ;	mov rax, 57; fork
 ;	syscall
 ;	cmp rax, 0
 ;	jz _fork
 
 _wait:
-;	mov rax, 61
+;	mov rax, 61; wait
 ;	mov rdi, 0x0
 ;	syscall
 ;	cmp rax, -1

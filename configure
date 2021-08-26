@@ -1,4 +1,6 @@
 #!/bin/bash
+rm -rf /tmp/test
+rm -rf /tmp/test2
 mkdir -p /tmp/test
 mkdir -p /tmp/test2
 cp -f /bin/ls /tmp/test
