@@ -38,7 +38,7 @@ OBJS 		=	$(SRCS:%.c=$(DIR_OBJS)%.o)
 OBJS_ASM	=	$(SRCS_ASM:%.s=$(DIR_OBJS_ASM)%.o)
 NAME 		=	Famine
 
-ifneq (,$(filter debug,$(MAKECMDGOALS)))
+ifneq (,$(filter debug check,$(MAKECMDGOALS)))
 	CC_FLAGS += -DDEBUG
 	SRCS += $(DEBUG)
 endif
@@ -88,4 +88,4 @@ re:				fclean all
 
 # PHONY #
 
-.PHONY:			all debug clean fclean re
+.PHONY:			all debug check clean fclean re
