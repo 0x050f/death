@@ -16,6 +16,18 @@ void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject, uint64_t entr
 
 	ft_memcpy(*dst, INJECT, INJECT_SIZE - (sizeof(uint64_t) * 4));
 	*dst += INJECT_SIZE - (sizeof(uint64_t) * 4);
+	#ifdef DEBUG
+		ft_putstr("INJECTION: \n");
+		ft_putstr("vaddr: 0x");
+		ft_puthexa(elf->pt_load->p_vaddr);
+		ft_putstr("\noffset_inject: 0x");
+		ft_puthexa(offset_inject);
+		ft_putstr("\nentry_prg: 0x");
+		ft_puthexa(elf->header->e_entry);
+		ft_putstr("\nentry_infect: 0x");
+		ft_puthexa(entry_infect);
+		ft_putstr("\n");
+	#endif
 	ft_memcpy(*dst + sizeof(uint64_t) * 0, &elf->pt_load->p_vaddr, sizeof(uint64_t));
 	ft_memcpy(*dst + sizeof(uint64_t) * 1, &offset_inject, sizeof(uint64_t));
 	ft_memcpy(*dst + sizeof(uint64_t) * 2, &elf->header->e_entry, sizeof(uint64_t));

