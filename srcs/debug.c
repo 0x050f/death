@@ -13,21 +13,22 @@ char	*ft_basename(char *prg)
 	char	*ptr;
 
 	ptr = prg;
-	while (tmp = ft_memmem(ptr, strlen(ptr), "/", 1))
+	while (tmp = ft_memmem(ptr, ft_strlen(ptr), "/", 1))
 		ptr = tmp;
 	return (ptr);
 }
 
-void	debug_print_error(int code, char *prg, char *input)
+void	debug_print_error(int code, char *file)
 {
-	print_color(_RED, ft_basename(prg));
-	ft_putstr(": ");
-	print_color(_RED, input);
+	print_color(_RED, file);
 	ft_putstr(": ");
 	switch (code)
 	{
 		case CORRUPTED_FILE:
 			ft_putstr("Corrupted file");
+			break;
+		case ALREADY_INFECTED:
+			ft_putstr("Already infected");
 			break;
 		default:
 			ft_putstr("Error");
@@ -51,7 +52,7 @@ void	debug_print_elf(t_elf *elf)
 	{
 		print_color(_YELLOW, name_params[i]);
 		ft_putstr(":");
-		if (strlen(name_params[i]) + 1 < 8)
+		if (ft_strlen(name_params[i]) + 1 < 8)
 			ft_putstr("	");
 		ft_putstr("	");
 		switch (i) {

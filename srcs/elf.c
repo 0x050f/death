@@ -27,7 +27,7 @@ void		*get_text_section(t_elf *elf)
 		return (NULL);
 	str = elf->addr + str_table->sh_offset;
 	i = 0;
-	while (i < elf->header->e_shnum && strcmp(str + elf->sections[i].sh_name, ".text"))
+	while (i < elf->header->e_shnum && ft_strcmp(str + elf->sections[i].sh_name, ".text"))
 		i++;
 	if (i == elf->header->e_shnum)
 		return (NULL);

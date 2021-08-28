@@ -8,7 +8,8 @@ _BLUE		=	\e[34m
 _END		=	\e[0m
 
 # COMPILATION #
-CC_FLAGS	=	-Wextra -Werror
+CC_FLAGS	=	-Wextra -Werror \
+				-nodefaultlibs -fno-stack-protector -nostdlib
 NASM_FLAGS	=	-f elf64
 
 # DIRECTORIES #
@@ -40,6 +41,7 @@ NAME 		=	Famine
 
 ifneq (,$(filter debug check,$(MAKECMDGOALS)))
 	CC_FLAGS += -DDEBUG
+	NASM_FLAGS += -DDEBUG
 	SRCS += $(DEBUG)
 endif
 

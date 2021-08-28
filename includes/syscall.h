@@ -12,6 +12,7 @@ struct				linux_dirent
 	char			d_name[];
 };
 
+ssize_t	syscall_read(int fd, const void *buf, size_t count);
 ssize_t	syscall_write(int fd, const void *buf, size_t count);
 int		syscall_open(const char *pathname, int flags);
 int		syscall_close(int fd);

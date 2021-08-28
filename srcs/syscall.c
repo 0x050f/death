@@ -1,5 +1,13 @@
 #include "syscall.h"
 
+ssize_t	syscall_read(int fd, const void *buf, size_t count)
+{
+	asm (".intel_syntax noprefix\n"
+			"mov rax, 0\n"
+			"syscall\n"
+			".att_syntax prefix\n");
+}
+
 ssize_t	syscall_write(int fd, const void *buf, size_t count)
 {
 	asm (".intel_syntax noprefix\n"
