@@ -23,8 +23,15 @@ SRCS			=	famine.c \
 					elf.c \
 					padding.c \
 					syscall.c \
-					utils.c
-DEBUG			=	debug.c
+					utils.c \
+					main.c
+DEBUG			=	famine.c \
+					elf.c \
+					padding.c \
+					syscall.c \
+					utils.c \
+					debug.c \
+					main.c
 SRCS_ASM		=	inject.s
 
 
@@ -42,7 +49,7 @@ NAME 		=	Famine
 ifneq (,$(filter debug check,$(MAKECMDGOALS)))
 	CC_FLAGS += -DDEBUG
 	NASM_FLAGS += -DDEBUG
-	SRCS += $(DEBUG)
+	SRCS = $(DEBUG)
 endif
 
 ## RULES ##

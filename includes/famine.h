@@ -35,10 +35,17 @@
 
 # define PAGE_SIZE 0x1000
 
+/* famine.c */
+void	infect(void);
+void	search_file_to_infect(char *path);
+
 int		get_size_needed(t_elf *elf, t_elf *virus_elf);
 
 /* padding.c */
 void	*add_padding_segments(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
 void	*add_padding_sections(t_elf *elf, t_elf *virus_elf, void *src, void **dst, int nb_zero);
+
+/* main.c */
+int		_start(void);
 
 #endif

