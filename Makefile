@@ -19,7 +19,7 @@ DIR_OBJS		=	./compiled_srcs/
 DIR_OBJS_ASM	=	./compiled_srcs/
 
 # FILES #
-SRCS			=	famine.c \
+SRCS			=	infect.c \
 					elf.c \
 					padding.c \
 					syscall.c \
@@ -38,7 +38,7 @@ NAME 		=	Famine
 ifeq ($(BUILD),debug)
 	CC_FLAGS	+=	-DDEBUG
 	NASM_FLAGS	+=	-DDEBUG
-	SRCS			=	famine.c \
+	SRCS			=	infect.c \
 						elf.c \
 						padding.c \
 						syscall.c \

