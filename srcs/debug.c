@@ -36,9 +36,30 @@ void	debug_print_error(int code, char *file)
 	ft_putstr("\n");
 }
 
+#  define _DIR		1
+#  define _LOCK		2
+#  define _FILE		3
+#  define _LOCK_W	4
+#  define _UNKNOW	5
+
+void	debug_print_file_type(char *path, int type)
+{
+	ft_putstr(path);
+	if (type == _DIR)
+		ft_putstr(" 📁\n");
+	else if (type == _LOCK)
+		ft_putstr(" 🔒\n");
+	else if (type == _FILE)
+		ft_putstr(" 📄\n");
+	else if (type == _LOCK_W)
+		ft_putstr(" 🔏\n");
+	else if (type == _UNKNOW)
+		ft_putstr(" ❓\n");
+}
+
 void	debug_print_elf(t_elf *elf)
 {
-	char	*name_params[] = {"filename", "addr", "size", "header", "segments", "sections", "pt_load", "text_section"};
+	char	*name_params[] = {"filename", "addr", "size", "entry", "header", "segments", "sections", "pt_load", "text_section"};
 	unsigned long params[] = {(unsigned long)elf->header,
 							(unsigned long)elf->segments,
 							(unsigned long)elf->sections,
@@ -66,9 +87,13 @@ void	debug_print_elf(t_elf *elf)
 			case 2:
 				ft_putnbr(elf->size);
 				break;
+			case 3:
+				ft_putstr("0x");
+				ft_puthexa((unsigned long)elf->header->e_entry);
+				break;
 			default:
 				ft_putstr("0x");
-				ft_puthexa(params[i - 3] - (unsigned long)elf->addr);
+				ft_puthexa(params[i - 4] - (unsigned long)elf->addr);
 		}
 		ft_putstr("\n");
 		if (i == 2)

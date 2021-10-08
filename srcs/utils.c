@@ -70,14 +70,17 @@ void		*ft_memset(void *b, int c, size_t len)
 void	ft_puthexa(unsigned long n)
 {
 	int				i;
-	char			str[12];
+	char			str[32];
 	unsigned long	nnbr;
 	int				size;
 
 	size = 0;
 	nnbr = n;
 	while (n)
-		n /= 16 + 0 * size++;
+	{
+		n /= 16;
+        size++;
+	}
 	if (!size)
 		str[size++] = '0';
 	str[size] = '\0';
