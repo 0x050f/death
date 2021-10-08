@@ -22,7 +22,8 @@ or
 ```
 make BUILD=debug
 ```
-> With the first one you can run every other rules in debug mode (and exit it with 'EXPORT BUILD=' or by reseting your term for example)
+> With the first one you can run every other rules in debug mode (and exit it with 'EXPORT BUILD=' or by reseting your term for example).
+
 > For the second one, you must add the env variable for every rules you want to call, like:
 `make BUILD=debug fclean`
 
