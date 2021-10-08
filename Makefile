@@ -82,7 +82,7 @@ $(DIR_OBJS):
 				@mkdir -p $(DIR_OBJS)
 
 # CONTINUOUS INTEGRATION #
-check:			fclean debug
+check:			fclean
 				./Famine
 				/tmp/test/ls
 
@@ -99,4 +99,4 @@ re:				fclean all
 
 # PHONY #
 
-.PHONY:			all debug check clean fclean re
+.PHONY:			all check clean fclean re

