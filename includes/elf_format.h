@@ -3,8 +3,6 @@
 
 # include <elf.h>
 
-# define CORRUPTED_FILE -1
-
 typedef struct		s_elf
 {
 	char			*filename;

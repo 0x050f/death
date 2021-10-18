@@ -18,6 +18,7 @@
 
 # include "debug.h"
 # include "elf_format.h"
+# include "error.h"
 # include "syscall.h"
 # include "utils.h"
 

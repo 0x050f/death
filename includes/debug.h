@@ -3,6 +3,7 @@
 
 # ifdef DEBUG
 #  include "elf_format.h"
+#  include "error.h"
 
 #  define _RED		"\e[31m"
 #  define _GREEN	"\e[32m"
@@ -15,9 +16,6 @@
 #  define _FILE		3
 #  define _LOCK_W	4
 #  define _UNKNOW	5
-
-#  define ALREADY_INFECTED -2
-#  define NOT_ELF -3
 
 void	debug_print_error(int code, char *file);
 void	debug_print_file_type(char *path, int type);
