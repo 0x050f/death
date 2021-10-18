@@ -17,6 +17,7 @@
 #  define _UNKNOW	5
 
 #  define ALREADY_INFECTED -2
+#  define NOT_ELF -3
 
 void	debug_print_error(int code, char *file);
 void	debug_print_file_type(char *path, int type);

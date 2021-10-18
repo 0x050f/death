@@ -30,6 +30,9 @@ void	debug_print_error(int code, char *file)
 		case ALREADY_INFECTED:
 			ft_putstr("Already infected");
 			break;
+		case NOT_ELF:
+			ft_putstr("Not an ELF file");
+			break;
 		default:
 			ft_putstr("Error");
 	}
