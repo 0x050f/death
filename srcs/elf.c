@@ -6,6 +6,8 @@ void		*get_str_table(t_elf *elf)
 	Elf64_Shdr		*str_table;
 
 	str_table = NULL;
+	if (elf->header->e_shoff > (unsigned int)elf->size)
+		return (NULL);
 	for (i = 0; i < elf->header->e_shnum; i++)
 	{
 		if (elf->sections[i].sh_offset > (unsigned int)elf->size)
@@ -60,19 +62,19 @@ int			init_elf(t_elf *elf, void *addr, long size)
 	elf->addr = addr;
 	elf->size = size;
 	elf->header = elf->addr;
-	if ((long)elf->header->e_phoff > elf->size || (long)elf->header->e_shoff > elf->size)
-		return (CORRUPTED_FILE);
 	elf->segments = elf->addr + elf->header->e_phoff;
 	elf->sections = elf->addr + elf->header->e_shoff;
 	elf->text_section = get_text_section(elf);
+	#ifdef DEBUG
+		debug_print_elf(elf);
+	#endif
+	if ((long)elf->header->e_phoff > elf->size || (long)elf->header->e_shoff > elf->size)
+		return (CORRUPTED_FILE);
 	if (!elf->text_section)
 		return (CORRUPTED_FILE);
 	elf->pt_load = get_pt_load_exec(elf);
 	if (!elf->pt_load)
 		return (CORRUPTED_FILE);
-	#ifdef DEBUG
-		debug_print_elf(elf);
-	#endif
 	return (0);
 }
 

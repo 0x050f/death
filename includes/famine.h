@@ -44,7 +44,7 @@ int		infect_fd(int fd, t_elf *elf);
 void	choose_infect(char *path);
 
 void	create_infection(void *dst, t_elf *elf, int nb_zero);
-int		write_infection(char *file, t_elf *elf, char *buffer, int size);
+int		write_infection(char *file, char *buffer, int size);
 int		get_size_needed(t_elf *elf, t_elf *virus_elf);
 
 /* padding.c */

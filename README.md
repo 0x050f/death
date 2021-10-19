@@ -12,6 +12,26 @@ make
 ./Famine
 ```
 
+## How
+
+```
+-----------------------
+|       HEADER        |
+-----------------------
+|                     |
+|       PT_LOAD       |
+|        [R E]        |
+|                     |
+- - - - - - - - - - - -
+|       INJECT        |
+- - - - - - - - - - - -
+|                     |
+|       FAMINE        |
+|                     |
+-----------------------
+|         ...         |
+```
+
 ## Debug
 
 To compile the debug version just set a env variable 'BUILD' as 'debug'

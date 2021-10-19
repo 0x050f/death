@@ -28,11 +28,11 @@ int		ft_memcmp(const void *s1, const void *s2, size_t n)
 
 void		*ft_memcpy(void *dst, const void *src, size_t n)
 {
-	char	*pt_src;
-	char	*pt_dst;
+	unsigned char	*pt_src;
+	unsigned char	*pt_dst;
 
-	pt_src = (char *)src;
-	pt_dst = (char *)dst;
+	pt_src = (unsigned char *)src;
+	pt_dst = (unsigned char *)dst;
 	while (n--)
 		*pt_dst++ = *pt_src++;
 	return (dst);
