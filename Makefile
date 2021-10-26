@@ -8,50 +8,25 @@ _BLUE		=	\e[34m
 _END		=	\e[0m
 
 # COMPILATION #
-CC_FLAGS	=	-Wextra -Werror \
-				-nodefaultlibs -fno-stack-protector -nostdlib -MMD -fpic -Os
-NASM_FLAGS	=	-f elf64
+FLAGS	=	-f elf64
 
 # DIRECTORIES #
-DIR_HEADERS		=	./includes/
 DIR_SRCS		=	./srcs/
-DIR_OBJS		=	./compiled_srcs/
 DIR_OBJS_ASM	=	./compiled_srcs/
 
 # FILES #
-SRCS			=	infect.c \
-					elf.c \
-					padding.c \
-					syscall.c \
-					utils.c \
-					main.c
-SRCS_ASM		=	inject.s
-
-# CMDS #
-INJECT		=	readelf -x .text $(DIR_OBJS)$(basename $(SRCS_ASM)) | awk '{if(NR>2)print}' | sed -e '$$d' | sed 's/  //' | cut -f 2- -d ' ' | cut -d ' ' -f 1,2,3,4 | sed 's/ //g' | sed 's/\n//g' | tr -d '\n' | sed 's/../\\\\x&/g'
-
-SIZE_INJECT =	(echo -n "("; (wc -c <<< $(shell $(INJECT))) | xargs echo -n; echo " - 1) / 4") | bc
+SRCS			=	famine.s
 
 NAME 		=	Famine
 
 ifeq ($(BUILD),debug)
-	CC_FLAGS	+=	-DDEBUG
-	NASM_FLAGS	+=	-DDEBUG
-	SRCS			=	infect.c \
-						elf.c \
-						padding.c \
-						syscall.c \
-						utils.c \
-						debug.c \
-						main.c
+	FLAGS	+=	-DDEBUG
 	DIR_OBJS		=	./debug-compiled_srcs/
-	DIR_OBJS_ASM	=	./debug-compiled_srcs/
 	NAME			=	./debug-Famine
 endif
 
 # COMPILED_SOURCES #
-OBJS 		=	$(SRCS:%.c=$(DIR_OBJS)%.o)
-OBJS_ASM	=	$(SRCS_ASM:%.s=$(DIR_OBJS_ASM)%.o)
+OBJS 		=	$(SRCS:%.s=$(DIR_OBJS)%.o)
 
 ## RULES ##
 all:			$(NAME)
@@ -60,22 +35,15 @@ all:			$(NAME)
 
 $(NAME):		$(OBJS_ASM) $(OBJS)
 				@printf "\033[2K\r$(_BLUE) All files compiled into '$(DIR_OBJS)'. $(_END)✅\n"
-				@gcc $(CC_FLAGS) -I $(DIR_HEADERS) $(OBJS) -o $(NAME)
+				@ld -o $@ $^
 				@printf "\033[2K\r$(_GREEN) Executable '$(NAME)' created. $(_END)✅\n"
 
 # COMPILED_SOURCES RULES #
 $(OBJS):		| $(DIR_OBJS)
 
-$(OBJS_ASM):	| $(DIR_OBJS_ASM)
-
-$(DIR_OBJS)%.o: $(DIR_SRCS)%.c
+$(DIR_OBJS)%.o: $(DIR_SRCS)%.s
 				@printf "\033[2K\r $(_YELLOW)Compiling $< $(_END)⌛ "
-				@gcc $(CC_FLAGS) -D INJECT=\"$(shell $(INJECT))\" -D INJECT_SIZE=$(shell $(SIZE_INJECT)) -I $(DIR_HEADERS) -c $< -o $@
-
-$(DIR_OBJS_ASM)%.o: $(DIR_SRCS)%.s
-				@printf "\033[2K\r $(_YELLOW)Compiling $< $(_END)⌛ "
-				@nasm $(NASM_FLAGS) -o $@ $<
-				@ld $@ -o $(basename $@)
+				@nasm $(FLAGS) -o $@ $<
 
 $(DIR_OBJS):
 				@mkdir -p $(DIR_OBJS)

