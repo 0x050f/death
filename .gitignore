@@ -1,3 +1,7 @@
 *.swp
 *.o
 famine
+compiled_srcs
+Famine
+debug-compiled_srcs
+debug-Famine

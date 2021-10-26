@@ -33,6 +33,9 @@ void	debug_print_error(int code, char *file)
 		case NOT_ELF:
 			ft_putstr("Not an ELF file");
 			break;
+		case TOO_BIG:
+			ft_putstr("Payload is too big");
+			break;
 		default:
 			ft_putstr("Error");
 	}
@@ -101,29 +104,6 @@ void	debug_print_elf(t_elf *elf)
 		ft_putstr("\n");
 		if (i == 2)
 			ft_putstr("- - - - - - - - - - - - - - - - - - -\n");
-	}
-	ft_putstr("-------------------------------------\n");
-}
-
-void	debug_print_args(int argc, char *argv[])
-{
-	int			i;
-
-	ft_putstr("--------------> ");
-	print_color(_YELLOW, "ARGS");
-	ft_putstr(" <---------------\n");
-	print_color(_YELLOW, "argc");
-	ft_putstr(":		");
-	ft_putnbr(argc);
-	ft_putstr("\n");
-	for (i = 0; argv[i]; i++)
-	{
-		print_color(_YELLOW, "argv[");
-		ft_putnbr(i);
-		print_color(_YELLOW, "]");
-		ft_putstr(":	`");
-		ft_putstr(argv[i]);
-		ft_putstr("`\n");
 	}
 	ft_putstr("-------------------------------------\n");
 }

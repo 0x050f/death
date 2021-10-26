@@ -84,7 +84,7 @@ int			check_magic_elf(void *addr)
 	unsigned char	magic[EI_NIDENT];
 
 	header = addr;
-	memcpy(magic, addr, sizeof(magic));
+	ft_memcpy(magic, addr, sizeof(magic));
 	if ((magic[EI_MAG0] == ELFMAG0) &&
 		(magic[EI_MAG1] == ELFMAG1) &&
 		(magic[EI_MAG2] == ELFMAG2) &&

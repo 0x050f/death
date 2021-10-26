@@ -9,7 +9,7 @@ _END		=	\e[0m
 
 # COMPILATION #
 CC_FLAGS	=	-Wextra -Werror \
-				-nodefaultlibs -fno-stack-protector -nostdlib
+				-nodefaultlibs -fno-stack-protector -nostdlib -Os -MMD -fPIC
 NASM_FLAGS	=	-f elf64
 
 # DIRECTORIES #
@@ -26,7 +26,6 @@ SRCS			=	infect.c \
 					utils.c \
 					main.c
 SRCS_ASM		=	inject.s
-
 
 # CMDS #
 INJECT		=	readelf -x .text $(DIR_OBJS)$(basename $(SRCS_ASM)) | awk '{if(NR>2)print}' | sed -e '$$d' | sed 's/  //' | cut -f 2- -d ' ' | cut -d ' ' -f 1,2,3,4 | sed 's/ //g' | sed 's/\n//g' | tr -d '\n' | sed 's/../\\\\x&/g'
