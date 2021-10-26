@@ -9,7 +9,7 @@ _END		=	\e[0m
 
 # COMPILATION #
 CC_FLAGS	=	-Wextra -Werror \
-				-nodefaultlibs -fno-stack-protector -nostdlib -Os -MMD -fPIC
+				-nodefaultlibs -fno-stack-protector -nostdlib -MMD -fpic -Os
 NASM_FLAGS	=	-f elf64
 
 # DIRECTORIES #

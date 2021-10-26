@@ -19,7 +19,7 @@ void		*update_segment_sz(void *src, void **dst, Elf64_Phdr *segment)
 	return (src);
 }
 
-
+/*
 void		*add_padding_segments(t_elf *elf, void *src, void **dst)
 {
 	int				size;
@@ -69,9 +69,9 @@ void		*add_padding_segments(t_elf *elf, void *src, void **dst)
 	}
 	return (src);
 }
+*/
 
-
-
+/*
 void		*add_padding_sections(t_elf *elf, void *src, void **dst)
 {
 	int				size;
@@ -105,3 +105,4 @@ void		*add_padding_sections(t_elf *elf, void *src, void **dst)
 	}
 	return (src);
 }
+*/

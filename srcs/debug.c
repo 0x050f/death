@@ -1,6 +1,6 @@
 #include "famine.h"
 
-void	print_color(char *color, char *str)
+void	print_color(const char *color, const char *str)
 {
 	syscall_write(STDOUT_FILENO, color, ft_strlen(color));
 	syscall_write(STDOUT_FILENO, str, ft_strlen(str));
@@ -18,7 +18,7 @@ char	*ft_basename(char *prg)
 	return (ptr);
 }
 
-void	debug_print_error(int code, char *file)
+void	debug_print_error(int code, const char *file)
 {
 	print_color(_RED, file);
 	ft_putstr(": ");
@@ -42,25 +42,18 @@ void	debug_print_error(int code, char *file)
 	ft_putstr("\n");
 }
 
-#  define _DIR		1
-#  define _LOCK		2
-#  define _FILE		3
-#  define _LOCK_W	4
-#  define _UNKNOW	5
-
-void	debug_print_file_type(char *path, int type)
+void	debug_print_file_type(const char *path, int type)
 {
+	char *strings[] =
+	{
+		(char[7]){' ', 0xf0, 0x9f, 0x93, 0x81,'\n','\0'}, // 📁
+		(char[7]){' ', 0xf0, 0x9f, 0x94, 0x92,'\n','\0'}, // 🔒
+		(char[7]){' ', 0xf0, 0x9f, 0x93, 0x84,'\n','\0'}, // 📄
+		(char[7]){' ', 0xf0, 0x9f, 0x94, 0x8f,'\n','\0'}, // 🔏
+		(char[6]){' ', 0xe2, 0x9d, 0x93, '\n','\0'} // ❓
+	};
 	ft_putstr(path);
-	if (type == _DIR)
-		ft_putstr(" 📁\n");
-	else if (type == _LOCK)
-		ft_putstr(" 🔒\n");
-	else if (type == _FILE)
-		ft_putstr(" 📄\n");
-	else if (type == _LOCK_W)
-		ft_putstr(" 🔏\n");
-	else if (type == _UNKNOW)
-		ft_putstr(" ❓\n");
+	ft_putstr(strings[type]);
 }
 
 void	debug_print_elf(t_elf *elf)

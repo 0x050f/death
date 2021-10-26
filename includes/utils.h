@@ -8,7 +8,7 @@ void	*ft_memmem(const void *l, size_t l_len, const void *s, size_t s_len);
 void	*ft_memset(void *b, int c, size_t len);
 void	ft_puthexa(unsigned long n);
 void	ft_putnbr(int n);
-void	ft_putstr(char *str);
+void	ft_putstr(const char *str);
 char	*ft_strcat(char *dst, const char *src);
 int		ft_strcmp(const char *s1, const char *s2);
 char	*ft_strcpy(char *dst, const char *src);

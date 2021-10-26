@@ -119,7 +119,7 @@ void	ft_putnbr(int n)
 		syscall_write(STDOUT_FILENO, "0", 1);
 }
 
-void	ft_putstr(char *str)
+void	ft_putstr(const char *str)
 {
 	syscall_write(STDOUT_FILENO, str, ft_strlen(str));
 }
