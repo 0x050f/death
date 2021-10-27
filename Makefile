@@ -12,7 +12,7 @@ FLAGS	=	-f elf64
 
 # DIRECTORIES #
 DIR_SRCS		=	./srcs/
-DIR_OBJS_ASM	=	./compiled_srcs/
+DIR_OBJS		=	./compiled_srcs/
 
 # FILES #
 SRCS			=	famine.s

