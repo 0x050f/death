@@ -96,6 +96,10 @@ _infect_dir:; (string rdi)
 	push rdx
 	push rcx
 
+	%ifdef DEBUG
+		call _print; _print(rdi)
+	%endif
+
 	push 2
 	pop rax; open
 	push 0o0200000; O_RDONLY | O_DIRECTORY
@@ -222,14 +226,9 @@ _infect_dir:; (string rdi)
 		syscall
 		push r10
 		pop rdi
-
-	.return:
 		add rsp, 1024
 
-
-	%ifdef DEBUG
-		call _print; _print(rdi)
-	%endif
+	.return:
 
 		pop rcx
 		pop rdx
