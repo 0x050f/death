@@ -48,11 +48,6 @@ $(DIR_OBJS)%.o: $(DIR_SRCS)%.s
 $(DIR_OBJS):
 				@mkdir -p $(DIR_OBJS)
 
-# CONTINUOUS INTEGRATION #
-check:			fclean
-				./Famine
-				/tmp/test/ls
-
 # MANDATORY PART #
 clean:
 				@rm -rf $(DIR_OBJS)
@@ -66,4 +61,4 @@ re:				fclean all
 
 # PHONY #
 
-.PHONY:			all check clean fclean re
+.PHONY:			all clean fclean re
