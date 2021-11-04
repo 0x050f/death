@@ -17,5 +17,11 @@ jobs:
       run: sudo apt-get install make nasm shunit2
     - name: make Famine
       run: make
+
+  test:
+
+    runs-on: ubuntu-latest
+
+    steps:
     - name: run tests
       run: ./test/script.sh
