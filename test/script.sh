@@ -35,7 +35,7 @@ test_host_infection() {
 	assertEquals "$output" "ls"
 }
 
-test_simple_infection(){
+test_simple_infection() {
 	cp -f /bin/pwd /tmp/test2/pwd
 	output=$(strings /tmp/test2/pwd | grep Famine)
 	assertEquals "$output" ""
@@ -45,6 +45,10 @@ test_simple_infection(){
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
 	assertEquals "$output" "$output_cmd"
+}
+
+test_all_bin_binaries() {
+	./test/count_infected.sh
 }
 
 . shunit2
