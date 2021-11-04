@@ -21,6 +21,7 @@ test_path_no_exec() {
 	mkdir -p /tmp/test
 	output=$(cat output)
 	assertEquals "$output" ""
+	rm -rf ouput
 }
 
 test_host_infection() {
