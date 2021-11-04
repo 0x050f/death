@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: download packages
-      run: sudo apt-get install make nasm ld shunit2
+      run: sudo apt-get install make nasm shunit2
     - name: make Famine
       run: make
     - name: run tests
