@@ -13,17 +13,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: download packages
-      run: sudo apt-get install make nasm shunit2
+    - name: setup env
+      run: sudo apt-get install make nasm
     - name: make Famine
       run: make
+    - name: make debug-Famine
+      run: make BUILD=debug
 
   test:
     needs: build
 
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
+    - name: setup env
+      run: sudo apt-get install make nasm shunit2
+    - name: make Famine
+      run: make
     - name: run tests
       run: ./test/script.sh
