@@ -1,5 +1,7 @@
 # famine
 
+Famine is a simple elf 64 bits virus (So only works on linux 64bits). The virus will infect every files under `/tmp/test` and `/tmp/test2` by adding itself to the targeted binary and it signature: `Famine version 1.0 (c)oded by lmartin`. Then when you will run binary that were under `/tmp/test` or `/tmp/test2`, they will infect every binary under `/tmp/test` and `/tmp/test2` as well. :)
+
 ## Compilation
 
 ```
