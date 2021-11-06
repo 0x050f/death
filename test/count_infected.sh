@@ -5,7 +5,7 @@ signature="Famine version 1.0 (c)oded by lmartin"
 rm -rf /tmp/test
 mkdir -p /tmp/test
 path=/bin
-cp -f $path/* /tmp/test
+cp -rf $path/* /tmp/test
 
 nb_files=$(ls -la /tmp/test | wc -l)
 
