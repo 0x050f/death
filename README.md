@@ -20,6 +20,8 @@ make
 
 ## How
 
+Famine will copy itself after the PT_LOAD executable of the targeted binary if there is enough space between the segment and the next one to fit. It will also change the previous entry of the program by itself and enhance p_filesz and p_memsz of the segment to be executable. It will also add to it replication, some tips of the targeted file like the previous entry to jump on it after it execution.
+
 ```
 -----------------------
 |       HEADER        |
@@ -53,4 +55,4 @@ make BUILD=debug
 > For the second one, you must add the env variable for every rules you want to call, like:
 `make BUILD=debug fclean`
 
-The debug-executable is `debug-Famine` and has differents compiled sources (`debug-compiled_srcs`) and srcs (`debug.c`)
+The debug-executable is `debug-Famine` and has differents compiled sources (`debug-compiled_srcs`)
