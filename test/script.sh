@@ -11,17 +11,20 @@ signature="Famine version 1.0 (c)oded by lmartin"
 
 test_path_no_exec() {
 	rm -rf /tmp/test /tmp/test2
-	./$exec &> output
-	mkdir -p /tmp/test
-	./$exec &>> output
-	mkdir -p /tmp/test2
-	./$exec &>> output
-	rm -rf /tmp/test
-	./$exec &>> output
-	mkdir -p /tmp/test
-	output=$(cat output)
+	output=$(./$exec)
 	assertEquals "$output" ""
-	rm -rf ouput
+	mkdir -p /tmp/test
+	output=$(./$exec)
+	assertEquals "$output" ""
+	mkdir -p /tmp/test2
+	output=$(./$exec)
+	assertEquals "$output" ""
+	rm -rf /tmp/test
+	output=$(./$exec)
+	assertEquals "$output" ""
+	mkdir -p /tmp/test
+	output=$(./$exec)
+	assertEquals "$output" ""
 }
 
 test_host_infection() {
