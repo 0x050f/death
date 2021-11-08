@@ -407,7 +407,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, [rbx + 8]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + 32]; p_filesz
-			cmp rsi, rdx
+			cmp rsi, rcx
 			jl .unmap
 			call _ft_memmem
 			cmp rax, 0x0
