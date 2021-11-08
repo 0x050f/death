@@ -4,6 +4,7 @@ Famine is a simple elf 64 bits virus (So only works on linux 64bits). The virus 
 
 ### Bonus:
 + Famine will not run it infection if `cat` or `gdb` process is running.
++ `make fsociety` will compile a Famine version that will infect everything from the root directory ( ⚠️  Please run it on a VM - you can run it as root tho :) )
 
 ## Demo
 
