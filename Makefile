@@ -31,6 +31,9 @@ OBJS 		=	$(SRCS:%.s=$(DIR_OBJS)%.o)
 ## RULES ##
 all:			$(NAME)
 
+fsociety:		FLAGS += -DFSOCIETY
+fsociety:		all
+
 # VARIABLES RULES #
 
 $(NAME):		$(OBJS_ASM) $(OBJS)
