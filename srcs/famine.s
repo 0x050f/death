@@ -482,7 +482,6 @@ _check_file_process:; (string rdi)
 
 			push rax
 			pop rsi
-			mov rsi, rax
 			lea rdi, [rel process]
 			xor rcx, rcx; = 0
 			.loop_array_string:
