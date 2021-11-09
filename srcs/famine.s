@@ -245,7 +245,8 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		pop rcx
 
 	.close:
-		mov rsi, rax
+		push rax
+		pop rsi
 		pop rdi; fd
 		push 3
 		pop rax; close
@@ -253,6 +254,8 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		push r10
 		pop rdi
 		add rsp, 1024
+		push rsi
+		pop rax
 
 	.return:
 
@@ -566,42 +569,30 @@ _ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or m
 	pop rdx
 ret
 
-_ft_isnum:; (string rdi) ; 1 yes 0 no
-	push rcx
-
-	push 1
-	pop rax
-	xor rcx, rcx
+_ft_isnum:; (string rdi) ; 0 no - otherwise rax something else
+	xor rax, rax
 	.loop_char:
-		cmp byte[rdi + rcx], 0x0
+		cmp byte[rdi + rax], 0x0
 		je .return
-		cmp byte[rdi + rcx], '0'
+		cmp byte[rdi + rax], '0'
 		jl .isnotnum
-		cmp byte[rdi + rcx], '9'
+		cmp byte[rdi + rax], '9'
 		jg .isnotnum
-		inc rcx
+		inc rax
 	jmp .loop_char
 	.isnotnum:
-		xor rax,rax
+		xor rax, rax
 	.return:
-
-	pop rcx
 ret
 
 _ft_strlen:; (string rdi)
-	push rcx
-
-	xor rcx, rcx; = 0
+	xor rax, rax; = 0
 	.loop_char:
-		cmp byte [rdi + rcx], 0
+		cmp byte [rdi + rax], 0
 		jz .return
-		inc rcx
+		inc rax
 	jmp .loop_char
 	.return:
-		push rcx
-		pop rax
-
-	pop rcx
 ret
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
@@ -691,6 +682,7 @@ ret
 
 _ft_strcmp: ; (string rdi, string rsi)
 	push rdx
+
 	call _ft_strlen
 	push rax
 	pop rdx
@@ -706,11 +698,13 @@ _ft_strcmp: ; (string rdi, string rsi)
 	inc rdx
 	.continue:
 	call _ft_memcmp
+
 	pop rdx
 ret
 
 _ft_strcpy: ; (string rdi, string rsi)
 	push rdx
+
 	push rdi
 	pop rdx
 	push rsi
@@ -722,8 +716,9 @@ _ft_strcpy: ; (string rdi, string rsi)
 	pop rdi
 	push rax
 	pop rdx
+	inc rdx
 	call _ft_memcpy
-	mov byte[rdi + rdx], 0x0
+
 	pop rdx
 ret
 
