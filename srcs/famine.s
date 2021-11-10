@@ -515,15 +515,8 @@ _check_file_process:; (string rdi)
 				call _ft_memmem
 				cmp rax, 0x0
 				jne .close
-				push rsi
-				push rdi
-				pop rsi
 				push rdx
 				pop rdi
-				call _ft_strcmp
-				pop rsi
-				cmp rax, 0x0
-				je .close
 			inc rcx
 			cmp byte[rdi + rcx], 0x0
 			jnz .loop_array_string
@@ -725,7 +718,7 @@ ret
 
 process_dir db `/proc`, 0x0
 process_status db `status`, 0x0
-process db `cat`, 0x0, `gdb`, 0x0, 0x0
+process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
 
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
