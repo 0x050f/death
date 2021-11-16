@@ -126,6 +126,8 @@ test_process_no_infection() {
 
 test_all_bin_binaries() {
 	./test/count_infected.sh
+	# clean all
+	rm -rf /tmp/test /tmp/test2
 }
 
 . shunit2

