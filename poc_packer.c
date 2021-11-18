@@ -7,12 +7,13 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <elf.h>
+#include <stdlib.h>
 
 typedef struct	s_data // 3 bytes
 {
 	unsigned char d; // distance
 	unsigned char l; // length
-	char c; // char
+	unsigned char c; // char
 }				t_data;
 
 void	pack(void *addr, size_t size)
@@ -35,32 +36,33 @@ void	pack(void *addr, size_t size)
 		}
 //		printf("\n");
 //		printf("len: %ld\n", len);
-		char distance;
-		char length;
-		char c;
+//		if (len < 10)
+//		{
+//			printf("\n");
+//			printf("len: %d\n", len);
+//			printf("char: %d\n", *dictionary);
+//		}
 		char *ret = 0;
 		char *prev_ret = 0;
-		size_t k = 0;
-		while (k < size_b && i + k < size && (ret = (char *)memmem((void *)buffer, len, (void *)dictionary, k)))
+		size_t k = 1;
+		while (k < size_b && i + k < size && buffer != dictionary && (ret = (char *)memmem((void *)buffer, len, (void *)dictionary, k)))
 		{
 			prev_ret = ret;
+//			printf("char: %d\n", *dictionary + k);
 			k++;
 		}
-		if (!prev_ret && i + k == size)
-			printf("hello !\n");
-//		printf("dictionary 0x%lx\n", (unsigned long)dictionary);
-//		printf("prev_ret 0x%lx\n", (unsigned long)prev_ret);
-		k--;
+		if (!prev_ret)
+			prev_ret = dictionary;
 		compression[j].d = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
-		compression[j].l = k;
-		compression[j].c = *(prev_ret + k + 1);
-//		printf("%p\n", prev_ret);
-//		printf("%p\n", dictionary);
-		printf("(%d, %d, %d) ", compression[j].d,
+		compression[j].l = k - 1;
+		compression[j].c = *(dictionary + k - 1);
+//		printf("\\x%x", *(dictionary + k - 1));
+		printf("(%d, %d, \\x%x) ", compression[j].d,
 								compression[j].l,
 								compression[j].c);
-		dictionary += k + 1;
-		i += k + 1;
+//		printf("\n");
+		dictionary += k;
+		i += k;
 		j++;
 	}
 	printf("\n");
