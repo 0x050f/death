@@ -9,23 +9,37 @@
 #include <elf.h>
 #include <stdlib.h>
 
-typedef struct	s_data // 3 bytes
+typedef struct	s_data // 2 bytes
 {
+	unsigned char identifier; //
 	unsigned char d; // distance
 	unsigned char l; // length
-	unsigned char c; // char
 }				t_data;
 
 void	pack(void *addr, size_t size)
 {
+	int test[256];
+	bzero(&test, 256);
+	for (int a = 0; a < size; a++)
+	{
+		test[*(unsigned char *)(addr + a)]++;
+	}
+
+	for (int a = 0; a < 256; a++)
+	{
+		if (!test[a])
+			printf("\\x%02x, %d\n", a, a);
+	}
+
 	char	*buffer = addr;
-	int		size_b = 256;
+	int		size_b = 236;
 	char	*dictionary = addr;
 
 	t_data compression[size];
 
 	size_t i = 0;
 	size_t j = 0;
+	size_t l = 0;
 	while (i < size)
 	{
 		size_t len = dictionary - buffer;
@@ -51,25 +65,36 @@ void	pack(void *addr, size_t size)
 //			printf("char: %d\n", *dictionary + k);
 			k++;
 		}
-		if (!prev_ret)
+		if (!prev_ret || k < 4)
+		{
+			k = 1;
 			prev_ret = dictionary;
-		compression[j].d = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
-		compression[j].l = k - 1;
-		compression[j].c = *(dictionary + k - 1);
-//		printf("\\x%x", *(dictionary + k - 1));
-		printf("(%d, %d, \\x%x) ", compression[j].d,
-								compression[j].l,
-								compression[j].c);
-//		printf("\n");
+			printf("\\x%x ", (unsigned char)*dictionary);
+			l++;
+		}
+		else
+		{
+			k--;
+			compression[j].identifier = 237;
+			compression[j].d = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
+			compression[j].l = k;
+	//		printf("\\x%x", *(dictionary + k - 1));
+
+			printf("(%d, %d, %d) ", compression[j].identifier,
+									compression[j].d,
+									compression[j].l);
+	//		printf("\n");
+			j++;
+		}
 		dictionary += k;
 		i += k;
-		j++;
 	}
 	printf("\n");
+	printf("l: %ld\n", l);
 	printf("j: %ld\n", j);
 	printf("sizeof(t_data): %ld\n", sizeof(t_data));
 	printf("previous size: %ld\n", size);
-	printf("new size: %ld\n", j * sizeof(t_data));
+	printf("new size: %ld\n", j * sizeof(t_data) + l);
 }
 
 int		get_executable(int fd, char *filename, struct stat sb)
