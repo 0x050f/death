@@ -16,9 +16,49 @@ typedef struct	s_data // 2 bytes
 	unsigned char l; // length
 }				t_data;
 
+void	unpack(unsigned char *dst, size_t length, unsigned char *src, size_t size)
+{
+	size_t i = 0;
+	size_t j = 0;
+	while (i < size)
+	{
+		if (src[i] == 237)
+		{
+			i++;
+//			printf("j: %ld- d: %d- l:%d\n", j, src[i], src[i + 1]);
+			memcpy(&dst[j], &dst[j - src[i]], src[i + 1]);
+			j += src[i + 1];
+			i += 2;
+		}
+		else
+			dst[j++] = src[i++];
+	}
+	printf("\n======================\n");
+	for (size_t i = 0; i < length; i++)
+		printf("\\x%02x ", ((unsigned char *)dst)[i]);
+	printf("\n======================\n");
+	printf("length: %ld\n", length);
+}
+
 void	pack(void *addr, size_t size)
 {
+	printf("\n======================\n");
+	for (size_t i = 0; i < size; i++)
+		printf("\\x%02x ", ((unsigned char *)addr)[i]);
+	printf("\n======================\n");
+	printf("length: %ld\n", size);
 /*
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  (byte & 0x80 ? '1' : '0'), \
+  (byte & 0x40 ? '1' : '0'), \
+  (byte & 0x20 ? '1' : '0'), \
+  (byte & 0x10 ? '1' : '0'), \
+  (byte & 0x08 ? '1' : '0'), \
+  (byte & 0x04 ? '1' : '0'), \
+  (byte & 0x02 ? '1' : '0'), \
+  (byte & 0x01 ? '1' : '0') 
+
 	int test[256];
 	bzero(&test, 256);
 	for (int a = 0; a < size; a++)
@@ -29,18 +69,18 @@ void	pack(void *addr, size_t size)
 	for (int a = 0; a < 256; a++)
 	{
 		if (!test[a])
-			printf("\\x%02x, %d\n", a, a);
+			printf("\\x%02x, %d, "BYTE_TO_BINARY_PATTERN"\n", a, a, BYTE_TO_BINARY(a));
 	}
 */
 
-	char	*buffer = addr;
-	int		size_b = 236;
-	char	*dictionary = addr;
+	unsigned char	compressed[size];
+	unsigned char	*buffer = addr;
+	int		size_b = 255;
+	unsigned char	*dictionary = addr;
 
 	t_data compression[size];
 
 	size_t i = 0;
-	size_t j = 0;
 	size_t l = 0;
 	while (i < size)
 	{
@@ -50,18 +90,20 @@ void	pack(void *addr, size_t size)
 			buffer += len - size_b;
 			len = dictionary - buffer;
 		}
-//		printf("\n");
-//		printf("len: %ld\n", len);
-//		if (len < 10)
-//		{
-//			printf("\n");
-//			printf("len: %d\n", len);
-//			printf("char: %d\n", *dictionary);
-//		}
+/*
+		printf("\n");
+		printf("len: %ld\n", len);
+		if (len < 10)
+		{
+			printf("\n");
+			printf("len: %d\n", len);
+			printf("char: %d\n", *dictionary);
+		}
+*/
 		char *ret = 0;
 		char *prev_ret = 0;
 		size_t k = 1;
-		while (k < size_b && i + k < size && buffer != dictionary && (ret = (char *)memmem((void *)buffer, len, (void *)dictionary, k)))
+		while (k < size_b && i + k < size && buffer != dictionary && (ret = (unsigned char *)memmem((void *)buffer, len, (void *)dictionary, k)))
 		{
 			prev_ret = ret;
 //			printf("char: %d\n", *dictionary + k);
@@ -71,32 +113,47 @@ void	pack(void *addr, size_t size)
 		{
 			k = 1;
 			prev_ret = dictionary;
-			printf("\\x%x ", (unsigned char)*dictionary);
-			l++;
+			compressed[l++] = *dictionary;
+			printf("\\x%02x ", (unsigned char)*dictionary);
 		}
 		else
 		{
 			k--;
-			compression[j].identifier = 237;
-			compression[j].d = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
-			compression[j].l = k;
-	//		printf("\\x%x", *(dictionary + k - 1));
-
-			printf("(%d, %d, %d) ", compression[j].identifier,
-									compression[j].d,
-									compression[j].l);
-	//		printf("\n");
-			j++;
+			compressed[l++] = 237;
+			printf("(237, ");
+			compressed[l++] = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
+			printf("%ld, ", (unsigned long)dictionary - (unsigned long)prev_ret);
+			compressed[l++] = k;
+			printf("%ld) ", k);
 		}
 		dictionary += k;
 		i += k;
 	}
 	printf("\n");
 	printf("l: %ld\n", l);
-	printf("j: %ld\n", j);
 	printf("sizeof(t_data): %ld\n", sizeof(t_data));
 	printf("previous size: %ld\n", size);
-	printf("new size: %ld\n", j * sizeof(t_data) + l);
+	size_t compressed_size = ++l;
+	printf("new size: %ld\n", compressed_size);
+	void *dst = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+	unpack(dst, size, compressed, compressed_size);
+
+/*
+	int fd = open("filea", O_CREAT | O_TRUNC | O_RDWR, 0644);
+	for (size_t l = 0; l < size; l++)
+		dprintf(fd, "\\x%02x\n", ((unsigned char *)addr)[l]);
+	close(fd);
+	fd = open("fileb", O_CREAT | O_TRUNC | O_RDWR, 0644);
+	for (size_t l = 0; l < size; l++)
+		dprintf(fd, "\\x%02x\n", ((unsigned char *)dst)[l]);
+	close(fd);
+*/
+
+	if (!memcmp(dst, addr, size))
+		printf("DIFF OK\n");
+	else
+		printf("DIFF KO\n");
+	munmap(dst, size);
 }
 
 int		get_executable(int fd, char *filename, struct stat sb)
@@ -121,7 +178,11 @@ int		get_executable(int fd, char *filename, struct stat sb)
 				{
 					printf("offset: 0x%lx\n", shdr->sh_offset);
 					printf("size: 0x%lx\n", shdr->sh_size);
-					pack(addr + shdr->sh_offset, shdr->sh_size);
+					void *offset = addr + shdr->sh_offset;
+					void *end_offset = memmem(offset, shdr->sh_size, "/proc", 5);
+					void *start_offset = offset + 140; // _search_dir
+					printf("size: %ld\n", end_offset - start_offset);
+					pack(start_offset, (unsigned long)end_offset - (unsigned long)start_offset);
 				}
 				shdr++;
 			}
