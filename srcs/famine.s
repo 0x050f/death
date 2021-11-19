@@ -135,6 +135,58 @@ _inject:
 
 		jmp _end
 
+;                 v dst       v length   v src       v size
+_unpack:; (void *rdi, size_t rsi; void *rdx; size_t rcx)
+	push r8
+	push r9
+	push r10
+	push r11
+	push rbx
+
+	xor r8, r8; i
+	xor r9, r9; j
+	.loop_uncompress:
+		cmp r8, rcx
+		jge .end_loop
+		cmp byte[rdx + r8], 17
+		je .uncompress_char
+		mov al, [rdx + r8]
+		mov [rdi + r9], al
+		inc r9
+		inc r8
+		.uncompress_char:
+		inc r8; i++
+		mov r10, rdi
+		mov r11, rsi
+		add rdi, r9; &dst[j]
+		mov rax, rsi
+		add rax, r8
+		mov rsi, rdi
+		xor rbx, rbx
+		mov bl, byte[rax]
+		sub rsi, rbx; &dst[j - src[i]]
+		push rdx
+		inc r8; i++
+		mov bl, byte[r11]
+		mov rdx, rbx
+		add rdx, r8; src[i]
+		call _ft_memcpy; memcpy(&dst[j], &dst[j - src[i - 1]], src[i])
+		add r9, [rdx]; j += src[i]
+		pop rdx
+		push r10
+		pop rdi
+		push r11
+		pop rsi
+		inc r8; i++
+	.end_loop:
+
+	pop rbx
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+ret
+
 ; ============================================================== pack from there
 _packed_part:
 _search_dir:
@@ -814,10 +866,113 @@ _end_host:
 
 ;               v dest
 _pack: ;(void *rdi) -> ret size + fill rdi
+	push r8
+	push r9
+	push r10
+	push r11
+	push rbx
+	push rcx
 	push rdx
 
-	lea rsi, [rel _packed_part]
+	mov rax, rdi
+	push rax
+	lea rsi, [rel _packed_part]; addr
+	mov r8, rsi; buffer
+	mov r9, rsi; dictionary
 	lea rdx, [rel _end_of_pack]
+	sub rdx, rsi; size
+	xor rcx, rcx; i
+	.loop_char:
+		mov rbx, r9
+		sub rbx, r8; len = dictionary - buffer
+		cmp rbx, 255
+		jle .continue
+		add r8, rbx
+		sub r8, 255; buffer += len - 255
+		mov rbx, r9
+		sub rbx, r8; len = dictionary - buffer
+		.continue:
+		xor r10, r10; ret
+		push 1
+		pop rsi; k
+		xor r11, r11; prev_ret
+		.loop_find_needle:
+			cmp rsi, 255
+			jge .end_loop_find_needle; if k >= 255
+			mov rax, rcx
+			add rax, rsi
+			cmp rax, rdx
+			jge .end_loop_find_needle; if i + k >= size
 
+			push rdi
+			push r8
+			pop rdi
+			push rcx
+			push rsi
+			pop rcx
+			push rbx
+			pop rsi
+			push rdx
+			push r9
+			pop rdx
+			call _ft_memmem ; memmem(buffer, len, dictionary, k)
+			push rdx
+			pop r9
+			pop rdx
+			push rsi
+			pop rbx
+			push rcx
+			pop rsi
+			pop rcx
+			push rdi
+			pop r8
+			pop rdi
+
+			cmp rax, 0x0
+			je .end_loop_find_needle
+
+			push rax
+			pop r11; prev_ret = ret
+			inc rsi; k++
+		jmp .loop_find_needle
+		.end_loop_find_needle:
+
+		cmp r11, 0x0
+		jne .compress_char; prev_ret
+		mov rax, rsi
+		dec rax
+		cmp rax, 4
+		jge .compress_char; if k - 1 >= 4
+		push 1
+		pop rsi; k = 1
+		mov [rdi], r9
+		inc rdi
+
+		jmp .end_loop_char
+		.compress_char:
+			mov byte[rdi], 17; 17 not in the code and its 00010001 in binary ;)
+			mov rax, r9
+			sub rax, r11
+			mov byte[rdi + 1], ah; d
+			mov byte[rdi + 2], sil; l
+			add rdi, 3
+
+	.end_loop_char:
+		add r9, rsi; dictionary += k
+		add rcx, rsi; i += k
+	cmp rcx, rdx
+	jl .loop_char
+
+	mov rax, rdi
+	pop rdi; bring back addr
+	sub rax, rdi; end_dst - dst => size
+	inc rax
+
+	pop rbx
 	pop rdx
+	pop rcx
+	pop r11
+	pop r10
+	pop r9
+	pop r8
 ret

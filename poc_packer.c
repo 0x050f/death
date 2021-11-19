@@ -22,13 +22,13 @@ void	unpack(unsigned char *dst, size_t length, unsigned char *src, size_t size)
 	size_t j = 0;
 	while (i < size)
 	{
-		if (src[i] == 237)
+		if (src[i] == 17) // cmp
 		{
 			i++;
-//			printf("j: %ld- d: %d- l:%d\n", j, src[i], src[i + 1]);
-			memcpy(&dst[j], &dst[j - src[i]], src[i + 1]);
-			j += src[i + 1];
-			i += 2;
+			memcpy(&dst[j], &dst[j - src[i]], src[i + 1]); // inc then memcpy
+			i++;
+			j += src[i]; // add
+			i++;
 		}
 		else
 			dst[j++] = src[i++];
@@ -47,7 +47,6 @@ void	pack(void *addr, size_t size)
 		printf("\\x%02x ", ((unsigned char *)addr)[i]);
 	printf("\n======================\n");
 	printf("length: %ld\n", size);
-/*
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
   (byte & 0x80 ? '1' : '0'), \
@@ -71,7 +70,6 @@ void	pack(void *addr, size_t size)
 		if (!test[a])
 			printf("\\x%02x, %d, "BYTE_TO_BINARY_PATTERN"\n", a, a, BYTE_TO_BINARY(a));
 	}
-*/
 
 	unsigned char	compressed[size];
 	unsigned char	*buffer = addr;
@@ -103,7 +101,7 @@ void	pack(void *addr, size_t size)
 		char *ret = 0;
 		char *prev_ret = 0;
 		size_t k = 1;
-		while (k < size_b && i + k < size && buffer != dictionary && (ret = (unsigned char *)memmem((void *)buffer, len, (void *)dictionary, k)))
+		while (k < size_b && i + k < size && (ret = (unsigned char *)memmem((void *)buffer, len, (void *)dictionary, k)))
 		{
 			prev_ret = ret;
 //			printf("char: %d\n", *dictionary + k);
@@ -119,8 +117,8 @@ void	pack(void *addr, size_t size)
 		else
 		{
 			k--;
-			compressed[l++] = 237;
-			printf("(237, ");
+			compressed[l++] = 17; // 17 not in the code and its 00010001 in binary
+			printf("(17, ");
 			compressed[l++] = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
 			printf("%ld, ", (unsigned long)dictionary - (unsigned long)prev_ret);
 			compressed[l++] = k;
