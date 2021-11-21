@@ -22,7 +22,7 @@ void	unpack(unsigned char *dst, size_t length, unsigned char *src, size_t size)
 	size_t j = 0;
 	while (i < size)
 	{
-		if (src[i] == 17) // cmp
+		if (src[i] == 242) // cmp
 		{
 			i++;
 			memcpy(&dst[j], &dst[j - src[i]], src[i + 1]); // inc then memcpy
@@ -80,6 +80,7 @@ void	pack(void *addr, size_t size)
 
 	size_t i = 0;
 	size_t l = 0;
+	size_t r = 0;
 	while (i < size)
 	{
 		size_t len = dictionary - buffer;
@@ -101,33 +102,37 @@ void	pack(void *addr, size_t size)
 		char *ret = 0;
 		char *prev_ret = 0;
 		size_t k = 1;
-		while (k < size_b && i + k < size && (ret = (unsigned char *)memmem((void *)buffer, len, (void *)dictionary, k)))
+		while (++r && k < size_b && i + k < size && (ret = (unsigned char *)memmem((void *)buffer, len, (void *)dictionary, k)))
 		{
 			prev_ret = ret;
 //			printf("char: %d\n", *dictionary + k);
 			k++;
 		}
-		if (!prev_ret || k - 1 < 4)
+		k--;
+		if (prev_ret && k >= 4)
+		{
+			compressed[l] = 242; // 17 not in the code and its 00010001 in binary
+			l++;
+			printf("(242, ");
+			compressed[l] = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
+			l++;
+			printf("%ld, ", (unsigned long)dictionary - (unsigned long)prev_ret);
+			compressed[l] = k;
+			l++;
+			printf("%ld) ", k);
+		}
+		else
 		{
 			k = 1;
 			prev_ret = dictionary;
 			compressed[l++] = *dictionary;
 			printf("\\x%02x ", (unsigned char)*dictionary);
 		}
-		else
-		{
-			k--;
-			compressed[l++] = 17; // 17 not in the code and its 00010001 in binary
-			printf("(17, ");
-			compressed[l++] = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
-			printf("%ld, ", (unsigned long)dictionary - (unsigned long)prev_ret);
-			compressed[l++] = k;
-			printf("%ld) ", k);
-		}
 		dictionary += k;
 		i += k;
 	}
 	printf("\n");
+	printf("r: %ld\n", r);
 	printf("l: %ld\n", l);
 	printf("sizeof(t_data): %ld\n", sizeof(t_data));
 	printf("previous size: %ld\n", size);
@@ -178,7 +183,7 @@ int		get_executable(int fd, char *filename, struct stat sb)
 					printf("size: 0x%lx\n", shdr->sh_size);
 					void *offset = addr + shdr->sh_offset;
 					void *end_offset = memmem(offset, shdr->sh_size, "/proc", 5);
-					void *start_offset = offset + 140; // _search_dir
+					void *start_offset = offset + 326; // _search_dir
 					printf("size: %ld\n", end_offset - start_offset);
 					pack(start_offset, (unsigned long)end_offset - (unsigned long)start_offset);
 				}
