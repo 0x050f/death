@@ -124,10 +124,4 @@ test_process_no_infection() {
 	assertEquals "$output_cmd" "$output"
 }
 
-test_all_bin_binaries() {
-	./test/count_infected.sh
-	# clean all
-	rm -rf /tmp/test /tmp/test2
-}
-
 . shunit2

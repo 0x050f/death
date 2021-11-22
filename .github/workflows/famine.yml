@@ -32,5 +32,7 @@ jobs:
       run: make
     - name: check running process
       run: ps -aux
-    - name: run tests
+    - name: simple_test
       run: ./test/script.sh
+    - name: test_all_bin_binaries
+      run: ./test/count_infected.sh
