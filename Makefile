@@ -19,11 +19,11 @@ SRCS			=	famine.s
 
 NAME 		=	Famine
 
-ifeq ($(BUILD),debug)
-	FLAGS	+=	-DDEBUG
-	DIR_OBJS		=	./debug-compiled_srcs/
-	NAME			=	./debug-Famine
-endif
+#ifeq ($(BUILD),debug)
+#	FLAGS	+=	-DDEBUG
+#	DIR_OBJS		=	./debug-compiled_srcs/
+#	NAME			=	./debug-Famine
+#endif
 
 # COMPILED_SOURCES #
 OBJS 		=	$(SRCS:%.s=$(DIR_OBJS)%.o)
