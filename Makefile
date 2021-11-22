@@ -12,10 +12,12 @@ FLAGS	=	-f elf64
 
 # DIRECTORIES #
 DIR_SRCS		=	./srcs/
+DIR_INCLUDES	=	./includes/
 DIR_OBJS		=	./compiled_srcs/
 
 # FILES #
-SRCS			=	famine.s
+SRCS			=	famine.s \
+					host.s
 
 NAME 		=	Famine
 
@@ -46,7 +48,7 @@ $(OBJS):		| $(DIR_OBJS)
 
 $(DIR_OBJS)%.o: $(DIR_SRCS)%.s
 				@printf "\033[2K\r $(_YELLOW)Compiling $< $(_END)⌛ "
-				@nasm $(FLAGS) -o $@ $<
+				@nasm $(FLAGS) -I $(DIR_INCLUDES) -o $@ $<
 
 $(DIR_OBJS):
 				@mkdir -p $(DIR_OBJS)

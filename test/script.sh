@@ -86,6 +86,7 @@ test_process_no_infection() {
 	# test from host
 	cat /dev/zero &
 	pid=$!
+	sleep 0.25
 	./$exec
 	output=$(strings /tmp/test/ls | grep Famine)
 	assertEquals "" "$output"
@@ -106,6 +107,7 @@ test_process_no_infection() {
 	cp -f /bin/pwd /tmp/test2/pwd
 	cat /dev/zero &
 	pid=$!
+	sleep 0.25
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
 	assertEquals "$output_cmd" "$output"

