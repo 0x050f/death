@@ -22,7 +22,7 @@ void	unpack(unsigned char *dst, size_t length, unsigned char *src, size_t size)
 	size_t j = 0;
 	while (i < size)
 	{
-		if (src[i] == 242) // cmp
+		if (src[i] == 244) // cmp
 		{
 			i++;
 			memcpy(&dst[j], &dst[j - src[i]], src[i + 1]); // inc then memcpy
@@ -111,9 +111,9 @@ void	pack(void *addr, size_t size)
 		k--;
 		if (prev_ret && k >= 4)
 		{
-			compressed[l] = 242; // 17 not in the code and its 00010001 in binary
+			compressed[l] = 244; // 17 not in the code and its 00010001 in binary
 			l++;
-			printf("(242, ");
+			printf("(244, ");
 			compressed[l] = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
 			l++;
 			printf("%ld, ", (unsigned long)dictionary - (unsigned long)prev_ret);
@@ -182,8 +182,9 @@ int		get_executable(int fd, char *filename, struct stat sb)
 					printf("offset: 0x%lx\n", shdr->sh_offset);
 					printf("size: 0x%lx\n", shdr->sh_size);
 					void *offset = addr + shdr->sh_offset;
-					void *end_offset = memmem(offset, shdr->sh_size, "/proc", 5);
-					void *start_offset = offset + 326; // _search_dir
+					void *end_offset = memmem(offset, shdr->sh_size, "\tgdb\n", 5);
+					end_offset += 2;
+					void *start_offset = offset + 400; // _search_dir
 					printf("size: %ld\n", end_offset - start_offset);
 					pack(start_offset, (unsigned long)end_offset - (unsigned long)start_offset);
 				}

