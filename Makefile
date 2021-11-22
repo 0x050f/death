@@ -16,8 +16,7 @@ DIR_INCLUDES	=	./includes/
 DIR_OBJS		=	./compiled_srcs/
 
 # FILES #
-SRCS			=	famine.s \
-					host.s
+SRCS			=	famine.s
 
 NAME 		=	Famine
 
