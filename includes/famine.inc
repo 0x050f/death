@@ -3,7 +3,7 @@
 %define SYSCALL_WRITE		1
 %define SYSCALL_OPEN		2
 %define SYSCALL_CLOSE		3
-%define SYSCALL_STAT		4
+%define SYSCALL_LSTAT		6
 %define SYSCALL_MMAP		9
 %define SYSCALL_MUNMAP		11
 %define SYSCALL_FORK		57
@@ -20,9 +20,9 @@
 %define ST_SIZE				48
 
 %define S_IFMT				0o0170000
-%define S_IFREG				0o0100000
-%define S_IFLNK				0o0120000
+
 %define S_IFDIR				0o0040000
+%define S_IFREG				0o0100000
 
 ; ELF
 
