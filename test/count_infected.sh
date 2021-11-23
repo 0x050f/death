@@ -36,11 +36,13 @@ do
 		then
 #			printf "\e[32m[OK]\e[0m\n"
 			i=$(( $i + 1 ))
-#		else
+		else
+			rm -rf $filename
 #			printf "\e[31m[KO]\e[0m\n"
 		fi
 	else
 		j=$(( $j + 1 ))
+		rm -rf $filename
 	fi
 done
 
@@ -60,8 +62,16 @@ nb_files=$(ls -la /tmp/test2 | wc -l)
 
 printf "infect...\n"
 time $(/tmp/test/ls &> /dev/null)
+printf "wait for process to finish...\n"
+ps | grep ls &> /dev/null
+while [ $? -eq 0 ]
+do
+	sleep 1 # wait a bit for infect
+	printf "."
+	ps | grep ls &> /dev/null
+done
 
-printf "checking files...\n"
+printf "\nchecking files...\n"
 i=0
 j=0
 for filename in /tmp/test2/*
@@ -76,15 +86,17 @@ do
 		then
 #			printf "\e[32m[OK]\e[0m\n"
 			i=$(( $i + 1 ))
-#		else
+		else
+			rm -rf $filename
 #			printf "\e[31m[KO]\e[0m\n"
 		fi
 	else
 		j=$(( $j + 1 ))
+		rm -rf $filename
 	fi
 done
 
 nb_files=$(( $nb_files - 2 )) # . and ..
 nb_files=$(( $nb_files - $j ))
 printf "infected_file: infected from $path: $i / $nb_files elf files\n"
-rm -rf /tmp/test /tmp/test2
+#rm -rf /tmp/test /tmp/test2
