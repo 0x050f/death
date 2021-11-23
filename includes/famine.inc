@@ -20,6 +20,8 @@
 %define ST_SIZE				48
 
 %define S_IFMT				0o0170000
+%define S_IFREG				0o0100000
+%define S_IFLNK				0o0120000
 %define S_IFDIR				0o0040000
 
 ; ELF

