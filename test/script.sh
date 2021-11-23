@@ -4,10 +4,10 @@ exec=$1
 
 if [ -z "$exec" ]
 then
-	exec=Famine
+	exec=Pestilence
 fi
 
-signature="Famine version 1.0 (c)oded by lmartin"
+signature="Pestilence version 1.0 (c)oded by lmartin"
 
 test_path_no_exec() {
 	rm -rf /tmp/test /tmp/test2
@@ -29,7 +29,7 @@ test_path_no_exec() {
 
 test_host_infection() {
 	cp -f /bin/ls /tmp/test/ls
-	output=$(strings /tmp/test/ls | grep Famine)
+	output=$(strings /tmp/test/ls | grep Pestilence)
 	assertEquals "" "$output"
 	./$exec
 	ps | grep $exec &> /dev/null
@@ -38,7 +38,7 @@ test_host_infection() {
 		sleep 0.25 # wait a bit for infect
 		ps | grep $exec &> /dev/null
 	done
-	output=$(strings /tmp/test/ls | grep Famine)
+	output=$(strings /tmp/test/ls | grep Pestilence)
 	assertEquals "$signature" "$output"
 	output=$(/tmp/test/ls /tmp/test)
 	assertEquals "ls" "$output"
@@ -46,7 +46,7 @@ test_host_infection() {
 
 test_simple_infection() {
 	cp -f /bin/pwd /tmp/test2/pwd
-	output=$(strings /tmp/test2/pwd | grep Famine)
+	output=$(strings /tmp/test2/pwd | grep Pestilence)
 	assertEquals "" "$output"
 	/tmp/test/ls &> /dev/null
 	ps | grep ls &> /dev/null
@@ -55,7 +55,7 @@ test_simple_infection() {
 		sleep 0.25 # wait a bit for infect
 		ps | grep ls &> /dev/null
 	done
-	output=$(strings /tmp/test2/pwd | grep Famine)
+	output=$(strings /tmp/test2/pwd | grep Pestilence)
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
@@ -66,9 +66,9 @@ test_subdir_infection() {
 	mkdir -p /tmp/test/lol/xd
 	cp -f /bin/ls /tmp/test/lol
 	cp -f /bin/pwd /tmp/test/lol/xd
-	output=$(strings /tmp/test/lol/ls | grep Famine)
+	output=$(strings /tmp/test/lol/ls | grep Pestilence)
 	assertEquals "" "$output"
-	output=$(strings /tmp/test/lol/xd/pwd | grep Famine)
+	output=$(strings /tmp/test/lol/xd/pwd | grep Pestilence)
 	assertEquals "" "$output"
 
 	# test from host
@@ -79,9 +79,9 @@ test_subdir_infection() {
 		sleep 0.25 # wait a bit for infect
 		ps | grep $exec &> /dev/null
 	done
-	output=$(strings /tmp/test/lol/ls | grep Famine)
+	output=$(strings /tmp/test/lol/ls | grep Pestilence)
 	assertEquals "$signature" "$output"
-	output=$(strings /tmp/test/lol/xd/pwd | grep Famine)
+	output=$(strings /tmp/test/lol/xd/pwd | grep Pestilence)
 	assertEquals "$signature" "$output"
 
 	cp -f /bin/ls /tmp/test
@@ -96,15 +96,15 @@ test_subdir_infection() {
 		sleep 0.25 # wait a bit for infect
 		ps | grep ls &> /dev/null
 	done
-	output=$(strings /tmp/test/lol/ls | grep Famine)
+	output=$(strings /tmp/test/lol/ls | grep Pestilence)
 	assertEquals "$signature" "$output"
-	output=$(strings /tmp/test/lol/xd/pwd | grep Famine)
+	output=$(strings /tmp/test/lol/xd/pwd | grep Pestilence)
 	assertEquals "$signature" "$output"
 }
 
 test_process_no_infection() {
 	cp -f /bin/ls /tmp/test/ls
-	output=$(strings /tmp/test/ls | grep Famine)
+	output=$(strings /tmp/test/ls | grep Pestilence)
 	assertEquals "" "$output"
 
 	# test from host
@@ -118,7 +118,7 @@ test_process_no_infection() {
 		sleep 0.25 # wait a bit for infect
 		ps | grep $exec &> /dev/null
 	done
-	output=$(strings /tmp/test/ls | grep Famine)
+	output=$(strings /tmp/test/ls | grep Pestilence)
 	assertEquals "" "$output"
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
@@ -133,7 +133,7 @@ test_process_no_infection() {
 		sleep 0.25 # wait a bit for infect
 		ps | grep $exec &> /dev/null
 	done
-	output=$(strings /tmp/test/ls | grep Famine)
+	output=$(strings /tmp/test/ls | grep Pestilence)
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
@@ -152,7 +152,7 @@ test_process_no_infection() {
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
 	assertEquals "$output_cmd" "$output"
-	output=$(strings /tmp/test2/pwd | grep Famine)
+	output=$(strings /tmp/test2/pwd | grep Pestilence)
 	assertEquals "" "$output"
 	kill -9 $pid
 
@@ -160,7 +160,7 @@ test_process_no_infection() {
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
 	assertEquals "$output_cmd" "$output"
-	output=$(strings /tmp/test2/pwd | grep Famine)
+	output=$(strings /tmp/test2/pwd | grep Pestilence)
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)

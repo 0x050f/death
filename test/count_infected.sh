@@ -4,10 +4,10 @@ exec=$1
 
 if [ -z "$exec" ]
 then
-	exec=Famine
+	exec=Pestilence
 fi
 
-signature="Famine version 1.0 (c)oded by lmartin"
+signature="Pestilence version 1.0 (c)oded by lmartin"
 path=/bin
 
 # FROM HOST
@@ -39,7 +39,7 @@ do
     then
 		name=$(basename $filename)
 #		printf "|%-50s|" "$name"
-		output=$(strings $filename | grep Famine)
+		output=$(strings $filename | grep Pestilence)
 		if [ "$output" == "$signature" ]
 		then
 #			printf "\e[32m[OK]\e[0m\n"
@@ -89,7 +89,7 @@ do
     then
 		name=$(basename $filename)
 #		printf "|%-50s|" "$name"
-		output=$(strings $filename | grep Famine)
+		output=$(strings $filename | grep Pestilence)
 		if [ "$output" == "$signature" ]
 		then
 #			printf "\e[32m[OK]\e[0m\n"
