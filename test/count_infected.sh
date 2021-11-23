@@ -20,8 +20,16 @@ nb_files=$(ls -la /tmp/test | wc -l)
 
 printf "infect...\n"
 time ./$exec
+printf "wait for process to finish...\n"
+ps | grep $exec &> /dev/null
+while [ $? -eq 0 ]
+do
+	sleep 1 # wait a bit for infect
+	printf "."
+	ps | grep $exec &> /dev/null
+done
 
-printf "checking files...\n"
+printf "\nchecking files...\n"
 i=0
 j=0
 for filename in /tmp/test/*

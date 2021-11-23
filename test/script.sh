@@ -32,6 +32,12 @@ test_host_infection() {
 	output=$(strings /tmp/test/ls | grep Famine)
 	assertEquals "" "$output"
 	./$exec
+	ps | grep $exec &> /dev/null
+	while [ $? -eq 0 ]
+	do
+		sleep 0.25 # wait a bit for infect
+		ps | grep $exec &> /dev/null
+	done
 	output=$(strings /tmp/test/ls | grep Famine)
 	assertEquals "$signature" "$output"
 	output=$(/tmp/test/ls /tmp/test)
@@ -67,6 +73,12 @@ test_subdir_infection() {
 
 	# test from host
 	./$exec
+	ps | grep $exec &> /dev/null
+	while [ $? -eq 0 ]
+	do
+		sleep 0.25 # wait a bit for infect
+		ps | grep $exec &> /dev/null
+	done
 	output=$(strings /tmp/test/lol/ls | grep Famine)
 	assertEquals "$signature" "$output"
 	output=$(strings /tmp/test/lol/xd/pwd | grep Famine)
@@ -78,7 +90,12 @@ test_subdir_infection() {
 	cp -f /bin/ls /tmp/test/lol
 	cp -f /bin/pwd /tmp/test/lol/xd
 	output=$(/tmp/test/ls)
-	sleep 0.25 # wait for inject (fork)
+	ps | grep ls &> /dev/null
+	while [ $? -eq 0 ]
+	do
+		sleep 0.25 # wait a bit for infect
+		ps | grep ls &> /dev/null
+	done
 	output=$(strings /tmp/test/lol/ls | grep Famine)
 	assertEquals "$signature" "$output"
 	output=$(strings /tmp/test/lol/xd/pwd | grep Famine)
@@ -95,6 +112,12 @@ test_process_no_infection() {
 	pid=$!
 	sleep 0.25
 	./$exec
+	ps | grep $exec &> /dev/null
+	while [ $? -eq 0 ]
+	do
+		sleep 0.25 # wait a bit for infect
+		ps | grep $exec &> /dev/null
+	done
 	output=$(strings /tmp/test/ls | grep Famine)
 	assertEquals "" "$output"
 	output_cmd=$(/bin/ls)
@@ -104,6 +127,12 @@ test_process_no_infection() {
 
 	# infect /tmp/test/ls
 	./$exec
+	ps | grep $exec &> /dev/null
+	while [ $? -eq 0 ]
+	do
+		sleep 0.25 # wait a bit for infect
+		ps | grep $exec &> /dev/null
+	done
 	output=$(strings /tmp/test/ls | grep Famine)
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/ls)

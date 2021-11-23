@@ -6,6 +6,7 @@
 %define SYSCALL_STAT		4
 %define SYSCALL_MMAP		9
 %define SYSCALL_MUNMAP		11
+%define SYSCALL_FORK		57
 %define SYSCALL_EXIT		60
 %define SYSCALL_GETDENTS	78
 
