@@ -46,9 +46,9 @@ _inject:
 
 	xor rdi, rdi; PTRACE_TRACEME
 	xor rsi, rsi
-	xor rdx, rdx
-	xor rcx, rcx
-	mov rax, 101; ptrace
+	jmp $+4; has to skip 2 byte of instruction next line
+	mov rdx, 0x656ac93148d23148
+	pop rax
 	syscall
 
 	cmp rax, 0x0
