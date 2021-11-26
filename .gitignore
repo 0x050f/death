@@ -1,7 +1,7 @@
 *.swp
 *.o
-famine
+pestilence
 compiled_srcs
-Famine
+Pestilence
 debug-compiled_srcs
-debug-Famine
+debug-Pestilence

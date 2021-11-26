@@ -48,3 +48,7 @@
 ; PACKER
 
 %define MAGIC_CHAR			244
+
+; KEY
+
+%define KEY_SIZE			256
