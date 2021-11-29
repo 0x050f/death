@@ -307,17 +307,17 @@ ret
 _ft_memcpy: ; (string rdi, string rsi, size_t rdx)
 	push rcx
 
-	xor rax, rax
-	xor rcx, rcx
-	.loop_byte:
-		cmp rcx, rdx
-		je .return
-		mov al, [rsi + rcx]
-		mov [rdi + rcx], al
-		inc rcx
-	jmp .loop_byte
-	.return:
-		mov rax, rdi
+	mov rax, rdi
+	mov rcx, rdx
+	push rdx
+	mov rdx, rsi
+	rep movsb
+	push rax
+	pop rdi
+	push rdx
+	pop rsi
+	pop rdx
+	mov rax, rdi
 
 	pop rcx
 ret
