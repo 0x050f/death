@@ -86,6 +86,12 @@ test_subdir_infection() {
 
 	cp -f /bin/ls /tmp/test
 	./$exec
+	ps | grep $exec &> /dev/null
+	while [ $? -eq 0 ]
+	do
+		sleep 0.25 # wait a bit for infect
+		ps | grep $exec &> /dev/null
+	done
 	# test from infected file
 	cp -f /bin/ls /tmp/test/lol
 	cp -f /bin/pwd /tmp/test/lol/xd

