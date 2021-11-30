@@ -833,12 +833,12 @@ _ft_concat_path: ;(string rdi, string rsi) -> rdi is dest, must be in stack or m
 	push rdx
 
 	mov rdx, rdi
+	push rdx
 	call _ft_strlen
 	add rdi, rax
 	mov byte[rdi], '/'
 	inc rdi
 	call _ft_strcpy
-	push rdx
 	pop rdi
 	mov rax, rdi
 
@@ -943,25 +943,44 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 ret
 
 _ft_strcmp: ; (string rdi, string rsi)
-	push rdx
+;	push rdx
+	push rcx
 
 	call _ft_strlen
 	push rax
-	pop rdx
-	push rdi
-	push rsi
-	pop rdi
-	call _ft_strlen
-	push rdi
+	pop rcx
+	mov rax, rdi
+	push rax
+	mov rax, rsi
+	push rax
+	rep cmpsb
+	std
+	cmpsb
+	cld
+	xor rax, rax
+	mov al, [rdi]
+	sub al, [rsi]
 	pop rsi
 	pop rdi
-	cmp rax, rdx
-	je .continue
-	inc rdx
-	.continue:
-	call _ft_memcmp
 
-	pop rdx
+;	call _ft_strlen
+;	push rax
+;	pop rdx
+;	push rdi
+;	push rsi
+;	pop rdi
+;	call _ft_strlen
+;	push rdi
+;	pop rsi
+;	pop rdi
+;	cmp rax, rdx
+;	je .continue
+;	inc rdx
+;	.continue:
+;	call _ft_memcmp
+
+	pop rcx
+;	pop rdx
 ret
 
 _ft_strcpy: ; (string rdi, string rsi)
