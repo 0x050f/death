@@ -948,6 +948,7 @@ _ft_strcmp: ; (string rdi, string rsi)
 	call _ft_strlen
 	push rax
 	pop rdx
+	inc rdx
 	call _ft_memcmp
 
 	pop rdx
