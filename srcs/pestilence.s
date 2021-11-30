@@ -901,8 +901,7 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 
 	xor rax,rax
 	xor r8, r8
-	sub rsi, rcx
-	cmp rsi, 0x0
+	cmp rsi, rcx
 	jl .return
 	cmp rcx, 0x0
 	je .return
@@ -935,7 +934,6 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 		mov rax, rdi
 		add rax, r8
 	.return:
-		add rsi, rcx
 
 	pop rbx
 	pop r9
@@ -948,7 +946,7 @@ _ft_strcmp: ; (string rdi, string rsi)
 	call _ft_strlen
 	push rax
 	pop rdx
-	inc rdx
+	dec rdx
 	call _ft_memcmp
 
 	pop rdx
