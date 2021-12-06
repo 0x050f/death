@@ -874,24 +874,22 @@ ret
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	push rcx
+	dec rdx
 
-	mov rax, rdi
-	push rax
-	mov rax, rsi
-	push rax
-	mov rcx, rdx
-	push rdx
-	repe cmpsb
-	std; change DF (direction flag)
-	cmpsb ; dec rdi; dec rsi // less bytes
-	cld; reset DF
 	xor rax, rax
-	mov al, [rdi]
-	sub al, [rsi]
-	pop rdx
-	pop rsi
-	pop rdi
+	xor rcx, rcx; = 0
+	.loop_byte:
+		mov al, [rdi + rcx]
+		cmp al, [rsi + rcx]
+		jne .return
+		cmp rcx, rdx
+		je .return
+		inc rcx
+	jmp .loop_byte
+	.return:
+		sub al, [rsi + rcx]
 
+	inc rdx
 	pop rcx
 ret
 
@@ -947,7 +945,6 @@ _ft_strcmp: ; (string rdi, string rsi)
 	call _ft_strlen
 	push rax
 	pop rdx
-	dec rdx
 	call _ft_memcmp
 
 	pop rdx
