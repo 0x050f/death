@@ -6,6 +6,7 @@ The difference with Famine is the code obfuscation.
 
 ### Bonus:
 + `make fsociety` will compile a Pestilence version that will infect everything from the root directory ( ⚠️  Please run it on a VM - you can run it as root tho :) )
++ `make fsociety` will also do a `bind shell` on port `4444` when itself or a infected file is launched as root :3
 + Pestilence will pack a part of his code when executing on host using a LZSS compression and depack itself to copy the packed part on the infected binary
 
 ## Demo
