@@ -377,7 +377,6 @@ _i_am_root:
 	push r9
 	pop rdx
 
-	; TODO: pipe to void error
 	lea rdi, [rel devnull]
 	mov rsi, 1
 	mov rax, 2; ;open("/dev/null", O_WRONLY)
@@ -389,8 +388,9 @@ _i_am_root:
 	mov rsi, 2
 	mov rax, 33; dup2(fd, 2)
 	syscall
-	mov rax, 3; close(fd)
-	syscall
+; let open otherwise don't work on guest
+;	mov rax, 3; close(fd)
+;	syscall
 
 	; I am root
 	xor rax, rax
