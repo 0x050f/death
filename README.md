@@ -2,7 +2,7 @@
 
 Pestilence is a second elf 64 bits virus (evolution of [Famine](https://github.com/ska42/famine)). The virus will infect every files under `/tmp/test` and `/tmp/test2` by adding itself to the targeted binary and it signature: `Pestilence version 1.0 (c)oded by lmartin`. Then when you will run binary that were under `/tmp/test` or `/tmp/test2`, they will infect every binary under `/tmp/test` and `/tmp/test2` as well. :)
 
-The difference with Famine is the code obfuscation.
+The difference with Famine is the code obfuscation: you can't run gdb or strace on it, and if you try to remove the code that block gdb or strace, the virus routine will be obfuscated.
 
 ### Bonus:
 + `make fsociety` will compile a Pestilence version that will infect everything from the root directory ( ⚠️  Please run it on a VM - you can run it as root tho :) )
