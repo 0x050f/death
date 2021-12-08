@@ -378,15 +378,22 @@ _i_am_root:
 	pop rdx
 
 	lea rdi, [rel devnull]
-	mov rsi, 1
-	mov rax, 2; ;open("/dev/null", O_WRONLY)
+	push 1
+	pop rsi
+	push 2
+	pop rax;open("/dev/null", O_WRONLY)
 	syscall
-	mov rdi, rax
-	mov rsi, 1
-	mov rax, 33; dup2(fd, 1)
+	push rax
+	pop rdi
+	push 1
+	pop rsi
+	push 33
+	pop rax; dup2(fd, 1)
 	syscall
-	mov rsi, 2
-	mov rax, 33; dup2(fd, 2)
+	push 2
+	pop rsi
+	push 33
+	pop rax; dup2(fd, 2)
 	syscall
 ; let open otherwise don't work on guest
 ;	mov rax, 3; close(fd)
@@ -406,13 +413,16 @@ _i_am_root:
 
 	mov rsi, rsp
 	lea rdi, [rel argv0]
-	mov rax, 59
+	push 59
+	pop rax
 	syscall
 
 	add rsp, 32
 
-	mov rdi, 0
-	mov rax, 60
+	push 0
+	pop rdi
+	push 60
+	pop rax
 	syscall
 ret
 %endif
