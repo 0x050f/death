@@ -54,7 +54,6 @@ _h3ll0w0rld:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
 	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
 	; binary (gdb, strace, ...), and then it select host or not launching
-; TODO: uncomment when it's rdy
 	.dont_gdb_bro:
 	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
 	; -- has to skip 2 byte of instruction next line
