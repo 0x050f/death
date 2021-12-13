@@ -10,6 +10,7 @@ The difference with Famine is the code obfuscation: you can't run gdb or strace 
 + Pestilence will pack a part of his code when executing on host using a LZSS compression and depack itself to copy the packed part on the infected binary
 
 ## Demo
+![alt text](https://raw.githubusercontent.com/y3ll0w42/pestilence/main/img/demo.png)
 
 ## Compilation
 
