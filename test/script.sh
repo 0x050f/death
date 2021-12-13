@@ -99,7 +99,7 @@ test_process_no_infection() {
 	assertEquals "" "$output"
 
 	# test from host
-	cat /dev/zero &
+	cat /dev/zero > /dev/null &
 	pid=$!
 	sleep 0.25
 	./$exec
@@ -122,7 +122,7 @@ test_process_no_infection() {
 
 	# test from /tmp/test/ls infected
 	cp -f /bin/pwd /tmp/test2/pwd
-	cat /dev/zero &
+	cat /dev/zero > /dev/null &
 	pid=$!
 	wait_for_process ls
 	output_cmd=$(/bin/ls)
