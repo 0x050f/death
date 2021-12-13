@@ -60,7 +60,6 @@ _h3ll0w0rld:
 	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
 	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
 	jmp .dont_gdb_bro + 2
-	xor rax, rax
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
