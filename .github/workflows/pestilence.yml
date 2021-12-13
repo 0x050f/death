@@ -25,7 +25,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: setup env
-      run: sudo apt-get install make nasm shunit2
+      run: sudo apt-get install make nasm shunit2 strace
     - name: make Pestilence
       run: make
     - name: check running process
