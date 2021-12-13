@@ -6,10 +6,33 @@
 %define SYSCALL_LSTAT		6
 %define SYSCALL_MMAP		9
 %define SYSCALL_MUNMAP		11
+%define SYSCALL_GETPID		39
 %define SYSCALL_FORK		57
 %define SYSCALL_EXIT		60
+%define SYSCALL_WAIT4		61
 %define SYSCALL_GETDENTS	78
+%define SYSCALL_PTRACE		101
 %define SYSCALL_GETEUID		107
+%define SYSCALL_GETPPID		110
+%define SYSCALL_PRCTL		157
+
+%macro WEXITSTATUS 2
+	; example WEXITSTATUS rax, status will expand to
+	; mov  rax, QWORD[status]
+	; and  rax, 0xFF00
+	; shr  rax, 8
+	mov     %1, %2
+	and     %1, 0xFF00
+	shr     %1, 8
+%endmacro
+
+; PTRACE
+
+%define PTRACE_ATTACH		16
+
+; PRCTL
+
+%define PR_SET_PTRACER		1499557217
 
 ; GETDENTS
 

