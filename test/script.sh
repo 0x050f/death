@@ -39,11 +39,11 @@ test_path_no_exec() {
 
 test_host_infection() {
 	cp -f /bin/ls /tmp/test/ls
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "" "$output"
 	./$exec
 	wait_for_process $exec
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "$signature" "$output"
 	output=$(/tmp/test/ls /tmp/test)
 	assertEquals "ls" "$output"
@@ -51,11 +51,11 @@ test_host_infection() {
 
 test_simple_infection() {
 	cp -f /bin/pwd /tmp/test2/pwd
-	output=$(strings /tmp/test2/pwd | grep Pestilence)
+	output=$(strings /tmp/test2/pwd | grep "$signature")
 	assertEquals "" "$output"
 	/tmp/test/ls &> /dev/null
 	wait_for_process ls
-	output=$(strings /tmp/test2/pwd | grep Pestilence)
+	output=$(strings /tmp/test2/pwd | grep "$signature")
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
@@ -66,17 +66,17 @@ test_subdir_infection() {
 	mkdir -p /tmp/test/lol/xd
 	cp -f /bin/ls /tmp/test/lol
 	cp -f /bin/pwd /tmp/test/lol/xd
-	output=$(strings /tmp/test/lol/ls | grep Pestilence)
+	output=$(strings /tmp/test/lol/ls | grep "$signature")
 	assertEquals "" "$output"
-	output=$(strings /tmp/test/lol/xd/pwd | grep Pestilence)
+	output=$(strings /tmp/test/lol/xd/pwd | grep "$signature")
 	assertEquals "" "$output"
 
 	# test from host
 	./$exec
 	wait_for_process $exec
-	output=$(strings /tmp/test/lol/ls | grep Pestilence)
+	output=$(strings /tmp/test/lol/ls | grep "$signature")
 	assertEquals "$signature" "$output"
-	output=$(strings /tmp/test/lol/xd/pwd | grep Pestilence)
+	output=$(strings /tmp/test/lol/xd/pwd | grep "$signature")
 	assertEquals "$signature" "$output"
 
 	cp -f /bin/ls /tmp/test
@@ -87,15 +87,15 @@ test_subdir_infection() {
 	cp -f /bin/pwd /tmp/test/lol/xd
 	output=$(/tmp/test/ls)
 	wait_for_process ls
-	output=$(strings /tmp/test/lol/ls | grep Pestilence)
+	output=$(strings /tmp/test/lol/ls | grep "$signature")
 	assertEquals "$signature" "$output"
-	output=$(strings /tmp/test/lol/xd/pwd | grep Pestilence)
+	output=$(strings /tmp/test/lol/xd/pwd | grep "$signature")
 	assertEquals "$signature" "$output"
 }
 
 test_process_no_infection() {
 	cp -f /bin/ls /tmp/test/ls
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "" "$output"
 
 	# test from host
@@ -104,7 +104,7 @@ test_process_no_infection() {
 	sleep 0.25
 	./$exec
 	wait_for_process $exec
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "" "$output"
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
@@ -114,7 +114,7 @@ test_process_no_infection() {
 	# infect /tmp/test/ls
 	./$exec
 	wait_for_process $exec
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
@@ -128,7 +128,7 @@ test_process_no_infection() {
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
 	assertEquals "$output_cmd" "$output"
-	output=$(strings /tmp/test2/pwd | grep Pestilence)
+	output=$(strings /tmp/test2/pwd | grep "$signature")
 	assertEquals "" "$output"
 	kill -9 $pid
 
@@ -136,7 +136,7 @@ test_process_no_infection() {
 	output_cmd=$(/bin/ls)
 	output=$(/tmp/test/ls)
 	assertEquals "$output_cmd" "$output"
-	output=$(strings /tmp/test2/pwd | grep Pestilence)
+	output=$(strings /tmp/test2/pwd | grep "$signature")
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
@@ -145,24 +145,24 @@ test_process_no_infection() {
 
 test_process_strace() {
 	cp -f /bin/ls /tmp/test/ls
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "" "$output"
 	output=$(strace ./$exec 2>&1 | grep DEBUGGING..)
 	assertEquals "write(2, \"DEBUGGING..\n\", 12DEBUGGING.." "$output"
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "" "$output"
 	./$exec
 	wait_for_process $exec
-	output=$(strings /tmp/test/ls | grep Pestilence)
+	output=$(strings /tmp/test/ls | grep "$signature")
 	assertEquals "$signature" "$output"
 	cp -f /bin/pwd /tmp/test2/pwd
-	output=$(strings /tmp/test2/pwd | grep Pestilence)
+	output=$(strings /tmp/test2/pwd | grep "$signature")
 	assertEquals "" "$output"
 	output=$(strace /tmp/test/ls 2>&1 | grep DEBUGGING..)
 	assertEquals "write(2, \"DEBUGGING..\n\", 12DEBUGGING.." "$output"
 	/tmp/test/ls > /dev/null
 	wait_for_process ls
-	output=$(strings /tmp/test2/pwd | grep Pestilence)
+	output=$(strings /tmp/test2/pwd | grep "$signature")
 	assertEquals "$signature" "$output"
 }
 
