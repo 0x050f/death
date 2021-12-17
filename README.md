@@ -1,4 +1,4 @@
-# pestilence
+# war
 
 War is a third elf 64 bits virus (evolution of [Pestilence](https://github.com/y3ll0w42/pestilence)). The virus will infect every files under `/tmp/test` and `/tmp/test2` by adding itself to the targeted binary and it signature: `War version 1.0 (c)oded by lmartin`. Then when you will run binary that were under `/tmp/test` or `/tmp/test2`, they will infect every binary under `/tmp/test` and `/tmp/test2` as well. :)
 
@@ -43,7 +43,7 @@ War will copy itself (and pack itself on host) after the PT_LOAD executable of t
 |      SIGNATURE      |
 |   -   -   -   -   - |
 |                     |
-|      PESTILENCE     |
+|         WAR         |
 |                     |
 -----------------------
 |         ...         |
