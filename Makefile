@@ -16,14 +16,14 @@ DIR_INCLUDES	=	./includes/
 DIR_OBJS		=	./compiled_srcs/
 
 # FILES #
-SRCS			=	pestilence.s
+SRCS			=	war.s
 
-NAME 		=	Pestilence
+NAME 		=	War
 
 #ifeq ($(BUILD),debug)
 #	FLAGS	+=	-DDEBUG
 #	DIR_OBJS		=	./debug-compiled_srcs/
-#	NAME			=	./debug-Pestilence
+#	NAME			=	./debug-War
 #endif
 
 # COMPILED_SOURCES #

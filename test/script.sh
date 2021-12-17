@@ -4,10 +4,10 @@ exec=$1
 
 if [ -z "$exec" ]
 then
-	exec=Pestilence
+	exec=War
 fi
 
-signature="Pestilence version 1.0 (c)oded by lmartin"
+signature="War version 1.0 (c)oded by lmartin"
 
 wait_for_process() {
 	process=$1
