@@ -49,26 +49,24 @@ _h3ll0w0rld:
 %endif
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
-	push r10
-	push rdx
-
-	push SYSCALL_GETPID; getpid
-	pop rax
+	jmp .here
+	.there:
+	mov rax, 0x00eb58276a525241; push r10; push rdx; push SYSCALL_GETPID; pop rax; jmp $+4
 	syscall
-
-	push PR_SET_PTRACER
-	pop rdi
-	push rax; pid
-	pop rsi
-	push SYSCALL_PRCTL; prctl
-	pop rax
-	syscall
-
-	xor rdx, rdx
-
+	jmp $+4
+	mov rdi, 0x00eb5f59616d6168; push PR_SET_PTRACER; pop rdi; jmp $+2
+	push rax
+	jmp $+3
+	mov rsi, 0x009d685e; pop rsi, push SYSCALL_PRCTL
+	db 0x0, 0x0
+	jmp $+4
+	mov rdx, 0x00ebd23148050f58; pop rax; syscall; xor rdx, rdx; jmp $+2
 	push SYSCALL_FORK
-	pop rax; fork
+	pop rax
 	syscall
+	jmp $+4
+	.here:
+		jmp .there + 2
 
 	cmp rax, 0x0
 	jne .parent
