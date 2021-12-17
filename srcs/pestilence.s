@@ -72,16 +72,17 @@ _h3ll0w0rld:
 	jne .parent
 
 	.child:
-		push SYSCALL_GETPPID; getppid
-		pop rax
-		syscall
-		push rax
-		pop rsi; ppid
+		jmp $+4
+		mov rax, 0xeb5e50050f586e6a; push SYSCALL_GETPPID; pop rax; syscall; push rax; pop rsi
+		db 0x0; rsi => ppid
 
 		push PTRACE_ATTACH
 		pop rdi
-		push SYSCALL_PTRACE; ptrace
+		push SYSCALL_PTRACE - 41; ptrace - 101; 101 - 41 = 60
 		pop rax
+		jmp $+4
+		syscall
+		add rax, 41; fUn
 		syscall
 
 		cmp rax, 0x0
