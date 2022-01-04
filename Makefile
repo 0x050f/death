@@ -39,7 +39,7 @@ fsociety:		all
 
 $(NAME):		$(OBJS_ASM) $(OBJS)
 				@printf "\033[2K\r$(_BLUE) All files compiled into '$(DIR_OBJS)'. $(_END)✅\n"
-				@ld -o $@ $^
+				@ld -s -o $@ $^
 				@printf "\033[2K\r$(_GREEN) Executable '$(NAME)' created. $(_END)✅\n"
 
 # COMPILED_SOURCES RULES #
