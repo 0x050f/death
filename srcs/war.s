@@ -1165,7 +1165,7 @@ hex_nums db `0123456789abcdef`, 0x0
 
 	process_dir db `/proc`, 0x0
 	process_status db `status`, 0x0
-	process db `\tcat\n`, 0x0, `\tgdb\n`, 0x0, 0x0
+	process db `\ttest\n`, 0x0, `\tcat\n`, 0x0, 0x0
 
 _eof:
 
