@@ -12,6 +12,11 @@
 section.text:
 	global _start
 
+; TODO:
+; - change trace by checking proc (ex: don t work with gdb peda)
+; - add infection method (PT_NOTE)
+; - better fingerprint
+
 ; -== Optimization ==-
 ;-> Save bytes:
 ;	mov x, 1 => 5 bytes
