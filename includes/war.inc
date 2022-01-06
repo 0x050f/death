@@ -49,6 +49,11 @@
 %define S_IFDIR				0o0040000
 %define S_IFREG				0o0100000
 
+; MAP
+
+%define MAP_SHARED			1
+%define MAP_PRIVATE			2
+
 ; ELF
 
 %define E_TYPE				16
@@ -67,6 +72,7 @@
 
 %define PF_X				1
 %define PT_LOAD				1
+%define PT_NOTE				4
 
 %define SIZEOF(ELF64_PHDR)	56
 

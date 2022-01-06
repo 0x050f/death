@@ -66,6 +66,7 @@ int poc(char *filename)
 		i++;
 	}
 	write(fd, addr, sb.st_size + 85 + 8 * 2);
+	munmap(addr, sb.st_size + 85 + 8 * 2);
 	close(fd);
 	return (0);
 }
