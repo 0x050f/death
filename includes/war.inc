@@ -49,6 +49,11 @@
 %define S_IFDIR				0o0040000
 %define S_IFREG				0o0100000
 
+; MAP
+
+%define MAP_SHARED			1
+%define MAP_PRIVATE			2
+
 ; ELF
 
 %define E_TYPE				16
@@ -62,17 +67,20 @@
 %define P_FLAGS				4
 %define	P_OFFSET			8
 %define P_VADDR				16
+%define P_PADDR				24
 %define	P_FILESZ			32
 %define	P_MEMSZ				40
+%define	P_ALIGN				48
 
 %define PF_X				1
 %define PT_LOAD				1
+%define PT_NOTE				4
 
 %define SIZEOF(ELF64_PHDR)	56
 
 ; PACKER
 
-%define MAGIC_CHAR			244
+%define MAGIC_CHAR			237
 
 ; KEY
 
