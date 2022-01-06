@@ -868,7 +868,6 @@ _infect_file: ; (string rdi, stat rsi)
 			push r11
 
 			mov rdi, [r12 + ST_SIZE]
-			; TODO: not working
 			add rdi, r13 ; addr pointer -> mmap
 
 			mov rdx, r14
