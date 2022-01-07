@@ -74,6 +74,38 @@ test_simple_infection() {
 	assertEquals "$output_cmd" "$output"
 }
 
+test_bullshit_file() {
+	cp -f /bin/ls /tmp/test/ls
+	cp -f /bin/ls /tmp/test/a
+	head -c 500 /bin/ls > /tmp/test/b
+	cp -f /bin/ls /tmp/test/c
+	cp -f /bin/ls /tmp/test/d
+	./$exec
+	wait_for_process $exec
+	output=$(strings /tmp/test/a | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	output=$(strings /tmp/test/b | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "" "$output"
+	output=$(strings /tmp/test/c | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	output=$(strings /tmp/test/d | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	cp -f /bin/ls /tmp/test/a
+	head -c 500 /bin/ls > /tmp/test/b
+	cp -f /bin/ls /tmp/test/c
+	cp -f /bin/ls /tmp/test/d
+	/tmp/test/ls &> /dev/null
+	wait_for_process ls
+	output=$(strings /tmp/test/a | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	output=$(strings /tmp/test/b | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "" "$output"
+	output=$(strings /tmp/test/c | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	output=$(strings /tmp/test/d | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+}
+
 test_subdir_infection() {
 	mkdir -p /tmp/test/lol/xd
 	cp -f /bin/ls /tmp/test/lol

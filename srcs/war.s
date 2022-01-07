@@ -233,12 +233,12 @@ _exit:
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	push rcx
-	dec rdx
 
 	xor rax, rax
 	xor rcx, rcx; = 0
 	cmp rcx, rdx
 	je .empty_return
+	dec rdx
 	.loop_byte:
 		mov al, [rdi + rcx]
 		cmp al, [rsi + rcx]
@@ -249,9 +249,9 @@ _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	jmp .loop_byte
 	.return:
 		sub al, [rsi + rcx]
+	inc rdx
 	.empty_return:
 
-	inc rdx
 	pop rcx
 ret
 
