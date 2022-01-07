@@ -20,11 +20,11 @@ SRCS			=	war.s
 
 NAME 		=	War
 
-#ifeq ($(BUILD),debug)
-#	FLAGS	+=	-DDEBUG
-#	DIR_OBJS		=	./debug-compiled_srcs/
-#	NAME			=	./debug-War
-#endif
+ifeq ($(BUILD),debug)
+	FLAGS	+=	-DDEBUG
+	DIR_OBJS		=	./debug-compiled_srcs/
+	NAME			=	./debug-War
+endif
 
 # COMPILED_SOURCES #
 OBJS 		=	$(SRCS:%.s=$(DIR_OBJS)%.o)
