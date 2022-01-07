@@ -12,10 +12,6 @@
 %define SYSCALL_WAIT4			61
 %define SYSCALL_GETDENTS		78
 %define SYSCALL_GETTIMEOFDAY	96
-%define SYSCALL_PTRACE			101
-%define SYSCALL_GETEUID			107
-%define SYSCALL_GETPPID			110
-%define SYSCALL_PRCTL			157
 
 %macro WEXITSTATUS 2
 	; example WEXITSTATUS rax, status will expand to
@@ -26,14 +22,6 @@
 	and     %1, 0xFF00
 	shr     %1, 8
 %endmacro
-
-; PTRACE
-
-%define PTRACE_ATTACH		16
-
-; PRCTL
-
-%define PR_SET_PTRACER		1499557217
 
 ; GETDENTS
 
