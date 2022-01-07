@@ -12,7 +12,6 @@ section.text:
 	global _start
 
 ; TODO:
-; - change trace by checking proc (ex: don t work with gdb peda)
 ; - define struct instead of var
 ; - better fingerprint
 
