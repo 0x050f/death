@@ -55,3 +55,12 @@ War will copy itself (and pack itself on host) after the PT_LOAD executable of t
 ```
 
 If there is not enough space after the PT_LOAD executable, War will seek a PT_NOTE and change it to PT_LOAD executable, then append itself at the end of the executable and change the entry point to it.
+
+## Debug-mode
+
+The debug mode deactivate the protection against tracer like gdb or strace and remove forks to easier debugging
+```
+export BUILD=debug
+make
+```
+This will create a executable named `./debug-War` and source are compiled in a folder `./debug-compiled_srcs`.
