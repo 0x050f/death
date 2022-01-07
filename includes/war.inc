@@ -80,7 +80,7 @@
 
 ; PACKER
 
-%define MAGIC_CHAR			237
+%define MAGIC_CHAR			244
 
 ; KEY
 
