@@ -12,7 +12,6 @@ section.text:
 	global _start
 
 ; TODO:
-; - define struct instead of var
 ; - better fingerprint
 
 ; -== Optimization ==-
