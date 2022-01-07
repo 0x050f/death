@@ -49,6 +49,18 @@ test_host_infection() {
 	assertEquals "ls" "$output"
 }
 
+test_pt_note_infection() {
+	cp -f /bin/echo /tmp/test/echo
+	output=$(./$exec)
+	assertEquals "" "$output"
+	wait_for_process $exec
+	output=$(strings /tmp/test/echo | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	output_cmd=$(/bin/echo "UwU")
+	output=$(/tmp/test/echo "UwU")
+	assertEquals "$output_cmd" "$output"
+}
+
 test_simple_infection() {
 	cp -f /bin/pwd /tmp/test2/pwd
 	output=$(strings /tmp/test2/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')

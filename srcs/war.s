@@ -13,6 +13,7 @@ section.text:
 
 ; TODO:
 ; - better fingerprint
+; - avoid segv on head -c or smthg
 
 ; -== Optimization ==-
 ;-> Save bytes:
@@ -37,6 +38,7 @@ _start:
 
 signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
 fingerprint db `00000000:0000`, 0x0
+
 _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
