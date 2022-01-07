@@ -53,3 +53,5 @@ War will copy itself (and pack itself on host) after the PT_LOAD executable of t
 -----------------------
 |         ...         |
 ```
+
+If there is not enough space after the PT_LOAD executable, War will seek a PT_NOTE and change it to PT_LOAD executable, then append itself at the end of the executable and change the entry point to it.
