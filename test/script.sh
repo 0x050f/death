@@ -106,6 +106,24 @@ test_bullshit_file() {
 	assertEquals "$signature" "$output"
 }
 
+test_no_multiple_infection() {
+	cp -f /bin/ls /tmp/test/ls
+	cp -f /bin/whoami /tmp/test/whoami
+	cp -f /bin/echo /tmp/test/echo
+	./$exec
+	wait_for_process $exec
+	./$exec
+	wait_for_process $exec
+	/tmp/test/ls &> /dev/null
+	wait_for_process ls
+	/tmp/test/ls &> /dev/null
+	wait_for_process ls
+	output=$(strings /tmp/test/whoami | grep "$signature" | wc -l)
+	assertEquals "1" "$output"
+	output=$(strings /tmp/test/echo | grep "$signature" | wc -l)
+	assertEquals "1" "$output"
+}
+
 test_subdir_infection() {
 	mkdir -p /tmp/test/lol/xd
 	cp -f /bin/ls /tmp/test/lol
