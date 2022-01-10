@@ -34,6 +34,8 @@ eeceb0ff:0102
 
 ## Demo
 
+![alt text](https://raw.githubusercontent.com/y3ll0w42/war/main/img/demo1.png)
+
 ## Compilation
 
 ```
