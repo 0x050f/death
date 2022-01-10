@@ -3,9 +3,6 @@
 section.text:
 	global _start
 
-; TODO:
-; - better fingerprint
-
 ; -== Optimization ==-
 ;-> Save bytes:
 ;	mov x, 1 => 5 bytes
