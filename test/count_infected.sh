@@ -4,10 +4,10 @@ exec=$1
 
 if [ -z "$exec" ]
 then
-	exec=War
+	exec=Death
 fi
 
-signature="War version 1.0 (c)oded by lmartin"
+signature="Death version 1.0 (c)oded by lmartin"
 path=/bin
 
 # FROM HOST

