@@ -4,9 +4,27 @@ War is a third elf 64 bits virus (evolution of [Pestilence](https://github.com/y
 
 The difference with Pestilence is the metamorphic ending signature. Everytime it infect a file, his signature (fingerprint part) evolves !
 
-The fingerprint is in the format hex_time_infection:nb_infect, example:
+The fingerprint is in the format hex_time_infection_modified:nb_infect, example:
 ```
 War version 1.0 (c)oded by lmartin - 61be6d99:0001
+```
+
+The modification is done by adding the first non-zero digit and following digit and modulo 16 the result:
+```
+ffffffff:0001
+v +
+11111111) % 16
+00000000:0001
+
+deadbeef:0012
+v +
+12121212) % 16
+e0bfc0f1:0012
+
+deadbeef:0102
+v +
+10210210) % 16
+eeceb0ff:0102
 ```
 
 ### Bonus:
