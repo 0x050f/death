@@ -1,10 +1,14 @@
 # death
 
-# WORK IN PROGRESS
-
 Death is a fourth elf 64 bits virus (evolution of [War](https://github.com/y3ll0w42/war)). The virus will infect every files under `/tmp/test` and `/tmp/test2` by adding itself to the targeted binary and it signature: `Death version 1.0 (c)oded by lmartin`. Then when you will run binary that were under `/tmp/test` or `/tmp/test2`, they will infect every binary under `/tmp/test` and `/tmp/test2` as well. :)
 
 The difference with War is the metamorphic behaviour on most of the machine code. Everytime it infect a file, it change !
+
+```
+cp -f /bin/ls /tmp/test/ls && cp -f /bin/ls /tmp/test/ls2
+./Death
+objdump -b binary -D /tmp/test/ls -m i386:x86-64 > ls && objdump -b binary -D /tmp/test/ls2 -m i386:x86-64 > ls2; diff -y --suppress-common-lines ls ls2 | grep '^' | wc -l
+```
 
 ### Bonus:
 + `make fsociety` will compile a Death version that will infect everything from the root directory ( ⚠️  Please run it on a VM - you can run it as root tho :) )
