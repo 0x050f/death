@@ -125,7 +125,6 @@ _h3ll0w0rld:
 	jnz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
-		; TODO: check with huge file + PT_LOAD
 		push rdx
 		lea rdi, [rel _start]
 		mov rsi, [rel entry_inject]
