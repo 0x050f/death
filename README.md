@@ -45,7 +45,7 @@ Death will copy itself (and pack itself on host) after the PT_LOAD executable of
 |      SIGNATURE      |
 |   -   -   -   -   - |
 |                     |
-|         WAR         |
+|       DEATH         |
 |                     |
 -----------------------
 |         ...         |
