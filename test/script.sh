@@ -228,4 +228,20 @@ test_process_strace() {
 	assertEquals "$signature" "$output"
 }
 
+test_machine_code_diff() {
+	cp -f /bin/ls /tmp/test/ls
+	cp -f /bin/ls /tmp/test/ls2
+	./$exec
+	output=$(objdump -b binary -D /tmp/test/ls -m i386:x86-64 > ls && objdump -b binary -D /tmp/test/ls2 -m i386:x86-64 > ls2; diff -y --suppress-common-lines ls ls2 | grep '^' | wc -l)
+	echo "$output line diff"
+	assertNotEquals "$output" "1"
+	cp -f /bin/ls /tmp/test/ls
+	./$exec
+	cp -f /bin/pwd /tmp/test/pwd
+	cp -f /bin/pwd /tmp/test/pwd2
+	output=$(objdump -b binary -D /tmp/test/pwd -m i386:x86-64 > pwd && objdump -b binary -D /tmp/test/pwd2 -m i386:x86-64 > pwd2; diff -y --suppress-common-lines pwd pwd2 | grep '^' | wc -l)
+	echo "$output line diff"
+	assertNotEquals "$output" "1"
+}
+
 . shunit2
