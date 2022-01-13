@@ -37,7 +37,7 @@ fsociety:		all
 
 # VARIABLES RULES #
 
-$(NAME):		$(OBJS_ASM) $(OBJS)
+$(NAME):		$(OBJS)
 				@printf "\033[2K\r$(_BLUE) All files compiled into '$(DIR_OBJS)'. $(_END)✅\n"
 				@ld -s -o $@ $^
 				@printf "\033[2K\r$(_GREEN) Executable '$(NAME)' created. $(_END)✅\n"

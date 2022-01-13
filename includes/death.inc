@@ -87,4 +87,4 @@ endstruc
 
 ; KEY
 
-%define KEY_SIZE			256
+%define KEY_SIZE			512
