@@ -47,6 +47,7 @@ test_host_infection() {
 	assertEquals "$signature" "$output"
 	output=$(/tmp/test/ls /tmp/test)
 	assertEquals "ls" "$output"
+	sleep 0.25
 }
 
 test_pt_note_infection() {
@@ -59,6 +60,7 @@ test_pt_note_infection() {
 	output_cmd=$(/bin/echo "UwU")
 	output=$(/tmp/test/echo "UwU")
 	assertEquals "$output_cmd" "$output"
+	sleep 0.25
 }
 
 test_simple_infection() {
@@ -72,6 +74,7 @@ test_simple_infection() {
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
 	assertEquals "$output_cmd" "$output"
+	sleep 0.25
 }
 
 test_bullshit_file() {
@@ -104,6 +107,7 @@ test_bullshit_file() {
 	assertEquals "$signature" "$output"
 	output=$(strings /tmp/test/d | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
+	sleep 0.25
 }
 
 test_no_multiple_infection() {
@@ -122,6 +126,7 @@ test_no_multiple_infection() {
 	assertEquals "1" "$output"
 	output=$(strings /tmp/test/echo | grep "$signature" | wc -l)
 	assertEquals "1" "$output"
+	sleep 0.25
 }
 
 test_subdir_infection() {
@@ -153,6 +158,7 @@ test_subdir_infection() {
 	assertEquals "$signature" "$output"
 	output=$(strings /tmp/test/lol/xd/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
+	sleep 0.25
 }
 
 test_process_no_infection() {
@@ -208,6 +214,7 @@ test_process_no_infection() {
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
 	assertEquals "$output_cmd" "$output"
+	sleep 0.25
 }
 
 test_process_strace() {
@@ -231,6 +238,7 @@ test_process_strace() {
 	wait_for_process ls
 	output=$(strings /tmp/test2/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
+	sleep 0.25
 }
 
 test_machine_code_diff() {
@@ -255,6 +263,7 @@ test_machine_code_diff() {
 	output=$(objdump -b binary -D /tmp/test/pwd -m i386:x86-64 > pwd && objdump -b binary -D /tmp/test/pwd2 -m i386:x86-64 > pwd2; diff -y --suppress-common-lines pwd pwd2 | grep '^' | wc -l)
 	echo "$output line diff"
 	assertNotEquals "$output" "1"
+	sleep 0.25
 }
 
 test_cascade_infection(){
@@ -283,6 +292,7 @@ test_cascade_infection(){
 	wait_for_process ls4
 	output=$(strings /tmp/test2/ls5 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
+	sleep 0.25
 }
 
 . shunit2
