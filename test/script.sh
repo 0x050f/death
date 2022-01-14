@@ -172,6 +172,7 @@ test_process_no_infection() {
 	output=$(/tmp/test/ls)
 	assertEquals "$output_cmd" "$output"
 	kill -9 $pid
+	wait_for_process cat
 
 	# infect /tmp/test/ls
 	./$exec
@@ -186,17 +187,21 @@ test_process_no_infection() {
 	cp -f /bin/pwd /tmp/test2/pwd
 	cat /dev/zero > /dev/null &
 	pid=$!
-	wait_for_process ls
 	output_cmd=$(/bin/ls)
+	wait_for_process ls
 	output=$(/tmp/test/ls)
+	wait_for_process ls
 	assertEquals "$output_cmd" "$output"
 	output=$(strings /tmp/test2/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "" "$output"
 	kill -9 $pid
+	wait_for_process cat
 
 	# infect
 	output_cmd=$(/bin/ls)
+	wait_for_process ls
 	output=$(/tmp/test/ls)
+	wait_for_process ls
 	assertEquals "$output_cmd" "$output"
 	output=$(strings /tmp/test2/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
@@ -243,9 +248,41 @@ test_machine_code_diff() {
 	cp -f /bin/pwd /tmp/test/pwd2
 	/tmp/test/ls &> /dev/null
 	wait_for_process ls
+	output=$(strings /tmp/test/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	output=$(strings /tmp/test/pwd2 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
 	output=$(objdump -b binary -D /tmp/test/pwd -m i386:x86-64 > pwd && objdump -b binary -D /tmp/test/pwd2 -m i386:x86-64 > pwd2; diff -y --suppress-common-lines pwd pwd2 | grep '^' | wc -l)
 	echo "$output line diff"
 	assertNotEquals "$output" "1"
+}
+
+test_cascade_infection(){
+	cp -f /bin/ls /tmp/test2/ls1
+	./$exec
+	wait_for_process $exec
+	output=$(strings /tmp/test2/ls1 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	cp -f /bin/ls /tmp/test2/ls2
+	/tmp/test2/ls1 &> /dev/null
+	wait_for_process ls1
+	output=$(strings /tmp/test2/ls2 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	cp -f /bin/ls /tmp/test2/ls3
+	/tmp/test2/ls2 &> /dev/null
+	wait_for_process ls2
+	output=$(strings /tmp/test2/ls3 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	cp -f /bin/ls /tmp/test2/ls4
+	/tmp/test2/ls3 &> /dev/null
+	wait_for_process ls3
+	output=$(strings /tmp/test2/ls4 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
+	cp -f /bin/ls /tmp/test2/ls5
+	/tmp/test2/ls4 &> /dev/null
+	wait_for_process ls4
+	output=$(strings /tmp/test2/ls5 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
+	assertEquals "$signature" "$output"
 }
 
 . shunit2

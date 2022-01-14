@@ -5,6 +5,7 @@
 %define SYSCALL_CLOSE			3
 %define SYSCALL_LSTAT			6
 %define SYSCALL_MMAP			9
+%define SYSCALL_MPROTECT		10
 %define SYSCALL_MUNMAP			11
 %define SYSCALL_GETPID			39
 %define SYSCALL_FORK			57
