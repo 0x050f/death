@@ -56,7 +56,7 @@ _h3ll0w0rld:
 %endif
 	jmp .there
 	.here:
-		db `\x48\xb8`; TRASH ; mov rax,
+		db `\x41\xb9`; TRASH ; mov rax,
 
 		push rdx
 		push rcx
@@ -67,7 +67,7 @@ _h3ll0w0rld:
 		nop
 
 		jmp $+6
-		db `\x42\x42\x48\x8b`; TRASH ; 42; 42; mov rdi,
+		db `\x42\x42\x41\xb8`; TRASH ; 42; 42; mov rdi,
 
 		push SYSCALL_OPEN
 		pop rax
@@ -87,9 +87,7 @@ _h3ll0w0rld:
 		jmp $+4
 		db `\x48\x8d`; TRASH ; lea rax, rcx
 
-		xor rax, rax; SYSCALL_READ
-		nop
-		nop
+		mov rax, 0; SYSCALL READ
 		nop
 		syscall
 
@@ -108,7 +106,7 @@ _h3ll0w0rld:
 		lea rdx, [rel tracer_pid]
 
 		jmp $+4
-		db `\x42\x58`; TRASH;
+		db `\x41\xb8`; TRASH;
 
 		push 13
 		nop
@@ -1963,3 +1961,4 @@ _pack: ;(void *rdi) -> ret size + fill rdi
 	pop r10
 	pop r8
 ret
+
