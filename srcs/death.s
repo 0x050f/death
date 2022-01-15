@@ -1408,7 +1408,7 @@ _metamorph:; (rdi -> ptr)
 			mov dl, byte[rax]
 			mov byte[rdi], dl
 			mov dword[rdi + 1], 0x00000000
-			add rcx, 4
+			add rcx, 5
 			jmp .inc_rcx
 		.swap_instruction_pattern_b:; xor r8, r8; nop; nop; nop -> mov r8, 0
 			cmp byte[rdi + 3], 0x90
@@ -1436,7 +1436,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi], 0x41
 			mov byte[rdi + 1], dl
 			mov dword[rdi + 2], 0x00000000
-			add rcx, 4
+			add rcx, 5
 			jmp .inc_rcx
 		.swap_instruction_pattern_c:; mov rax, 0; nop -> xor rax, rax; nop; nop; nop
 			cmp byte[rdi + 5], 0x90
@@ -1463,7 +1463,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi + 2], dl
 			mov word[rdi + 3], 0x9090
 			mov byte[rdi + 5], 0x90
-			add rcx, 4
+			add rcx, 5
 			jmp .inc_rcx
 		.swap_instruction_pattern_d:; mov r8, 0 -> xor r8, r8; ;nop; nop; nop
 			cmp dword[rdi + 2], 0x00000000
@@ -1490,7 +1490,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi + 2], dl
 			mov word[rdi + 3], 0x9090
 			mov byte[rdi + 5], 0x90
-			add rcx, 4
+			add rcx, 5
 			jmp .inc_rcx
 		.swap_instruction_pattern_e:; push 9; nop; pop rax; nop -> mov rax, 9
 			cmp byte[rdi + 2], 0x90
@@ -1505,7 +1505,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi], dl
 			mov word[rdi + 2], 0x0000
 			mov byte[rdi + 4], 0x0
-			add rcx, 3
+			add rcx, 4
 			jmp .inc_rcx
 		.swap_instruction_pattern_f:; mov rax, 9 -> push 9; nop; pop rax; nop
 			cmp word[rdi + 2], 0x0000
@@ -1521,7 +1521,7 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi + 2], 0x90
 			mov byte[rdi + 3], dl
 			mov byte[rdi + 4], 0x90
-			add rcx, 3
+			add rcx, 4
 			jmp .inc_rcx
 		.inc_rcx:
 			pop rsi
