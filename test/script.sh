@@ -22,18 +22,23 @@ wait_for_process() {
 test_path_no_exec() {
 	rm -rf /tmp/test /tmp/test2
 	output=$(./$exec)
+	wait_for_process $exec
 	assertEquals "" "$output"
 	mkdir -p /tmp/test
 	output=$(./$exec)
+	wait_for_process $exec
 	assertEquals "" "$output"
 	mkdir -p /tmp/test2
 	output=$(./$exec)
+	wait_for_process $exec
 	assertEquals "" "$output"
 	rm -rf /tmp/test
 	output=$(./$exec)
+	wait_for_process $exec
 	assertEquals "" "$output"
 	mkdir -p /tmp/test
 	output=$(./$exec)
+	wait_for_process $exec
 	assertEquals "" "$output"
 }
 
@@ -46,8 +51,8 @@ test_host_infection() {
 	output=$(strings /tmp/test/ls | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
 	output=$(/tmp/test/ls /tmp/test)
+	wait_for_process ls
 	assertEquals "ls" "$output"
-	sleep 0.25
 }
 
 test_pt_note_infection() {
@@ -58,9 +63,10 @@ test_pt_note_infection() {
 	output=$(strings /tmp/test/echo | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/echo "UwU")
+	wait_for_process echo
 	output=$(/tmp/test/echo "UwU")
+	wait_for_process echo
 	assertEquals "$output_cmd" "$output"
-	sleep 0.25
 }
 
 test_simple_infection() {
@@ -72,9 +78,10 @@ test_simple_infection() {
 	output=$(strings /tmp/test2/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
 	output_cmd=$(/bin/pwd)
+	wait_for_process pwd
 	output=$(/tmp/test2/pwd)
+	wait_for_process pwd
 	assertEquals "$output_cmd" "$output"
-	sleep 0.25
 }
 
 test_bullshit_file() {
@@ -107,7 +114,6 @@ test_bullshit_file() {
 	assertEquals "$signature" "$output"
 	output=$(strings /tmp/test/d | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
-	sleep 0.25
 }
 
 test_no_multiple_infection() {
@@ -126,7 +132,6 @@ test_no_multiple_infection() {
 	assertEquals "1" "$output"
 	output=$(strings /tmp/test/echo | grep "$signature" | wc -l)
 	assertEquals "1" "$output"
-	sleep 0.25
 }
 
 test_subdir_infection() {
@@ -158,7 +163,6 @@ test_subdir_infection() {
 	assertEquals "$signature" "$output"
 	output=$(strings /tmp/test/lol/xd/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
-	sleep 0.25
 }
 
 test_process_no_infection() {
@@ -169,7 +173,6 @@ test_process_no_infection() {
 	# test from host
 	cat /dev/zero > /dev/null &
 	pid=$!
-	sleep 0.25
 	./$exec
 	wait_for_process $exec
 	output=$(strings /tmp/test/ls | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
@@ -214,7 +217,6 @@ test_process_no_infection() {
 	output_cmd=$(/bin/pwd)
 	output=$(/tmp/test2/pwd)
 	assertEquals "$output_cmd" "$output"
-	sleep 0.25
 }
 
 test_process_strace() {
@@ -238,7 +240,6 @@ test_process_strace() {
 	wait_for_process ls
 	output=$(strings /tmp/test2/pwd | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
-	sleep 0.25
 }
 
 test_machine_code_diff() {
@@ -263,7 +264,6 @@ test_machine_code_diff() {
 	output=$(objdump -b binary -D /tmp/test/pwd -m i386:x86-64 > pwd && objdump -b binary -D /tmp/test/pwd2 -m i386:x86-64 > pwd2; diff -y --suppress-common-lines pwd pwd2 | grep '^' | wc -l)
 	echo "$output line diff"
 	assertNotEquals "$output" "1"
-	sleep 0.25
 }
 
 test_cascade_infection(){
@@ -292,7 +292,6 @@ test_cascade_infection(){
 	wait_for_process ls4
 	output=$(strings /tmp/test2/ls5 | grep "$signature" | cut -d'-' -f1 | sed 's/.$//')
 	assertEquals "$signature" "$output"
-	sleep 0.25
 }
 
 . shunit2
