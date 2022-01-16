@@ -62,12 +62,17 @@ _h3ll0w0rld:
 		push rcx
 		lea rdi, [rel self_status]
 		xor rsi, rsi; O_RDONLY
+		nop
+		nop
+		nop
 
 		jmp $+6
 		db `\x42\x42\x41\xb8`; TRASH ; 42; 42; mov rdi,
 
 		push SYSCALL_OPEN
+		nop
 		pop rax
+		nop
 		syscall
 		push rax
 		pop rdi
@@ -78,9 +83,9 @@ _h3ll0w0rld:
 		sub rsp, 4096
 
 		mov rsi, rsp
-		push 4096
-		pop rdx
-		
+		xor rdx, rdx
+		add rdx, 4096
+
 		jmp $+4
 		db `\x48\x8d`; TRASH ; lea rax, rcx
 
@@ -192,9 +197,12 @@ _h3ll0w0rld:
 	jmp $+4; has to skip 2 byte of instruction next line
 	db `\x48\xbf`
 	push 1
+	nop
 	pop rdi
-	push 60
-	pop rax
+	nop
+	mov rax, 0x0
+	nop
+	add rax, 60
 	jmp $+5
 	.ft_juggling:
 	db `\x48\xb8`; TRASH ; mov rax,
