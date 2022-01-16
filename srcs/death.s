@@ -67,7 +67,7 @@ _h3ll0w0rld:
 		nop
 
 		jmp $+6
-		db `\x42\x42\x41\xb8`; TRASH ; 42; 42; mov rdi,
+		db `\x42\x42\x42\x42`; TRASH ; 42; 42; mov rdi,
 
 		push SYSCALL_OPEN
 		nop
