@@ -1416,7 +1416,7 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			call _yes_or_no
 			cmp rax, 0x0
-			jne .inc_rcx
+			je .inc_rcx
 			mov rdx, rdi
 			push rdi
 			push rcx
@@ -1443,7 +1443,7 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			call _yes_or_no
 			cmp rax, 0x0
-			jne .inc_rcx
+			je .inc_rcx
 			mov rdx, rdi
 			push rdi
 			push rcx
@@ -1469,7 +1469,7 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			call _yes_or_no
 			cmp rax, 0x0
-			jne .inc_rcx
+			je .inc_rcx
 			mov rdx, rdi
 			push rdi
 			push rcx
@@ -1496,7 +1496,7 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			call _yes_or_no
 			cmp rax, 0x0
-			jne .inc_rcx
+			je .inc_rcx
 			mov rdx, rdi
 			push rdi
 			push rcx
@@ -1525,7 +1525,7 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			call _yes_or_no
 			cmp rax, 0x0
-			jne .inc_rcx
+			je .inc_rcx
 			mov dl, byte[rdi + 3]
 			add dl, 0x60
 			mov byte[rdi], dl
@@ -1540,7 +1540,7 @@ _metamorph:; (rdi -> ptr)
 			jne .inc_rcx
 			call _yes_or_no
 			cmp rax, 0x0
-			jne .inc_rcx
+			je .inc_rcx
 			mov dl, byte[rdi]
 			sub dl, 0x60
 			mov byte[rdi], 0x6a
@@ -1592,7 +1592,7 @@ _yes_or_no:
 			add rsp, 1
 
 			push rdi
-			mov rdi, 2
+			mov rdi, 3
 			div rdi
 			pop rdi
 			mov rax, rdx
