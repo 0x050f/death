@@ -266,6 +266,8 @@ test_machine_code_diff() {
 	wait_for_process objdump
 	echo "$output line diff"
 	assertNotEquals "$output" "1"
+	rm -rf ls*
+	rm -rf pwd*
 }
 
 test_cascade_infection(){
