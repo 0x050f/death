@@ -1657,7 +1657,7 @@ _metamorph:; (rdi -> ptr)
 				mov byte[rdi], 0x48
 				add byte[rdi], al
 			push rdi
-			mov rdi, 2
+			mov rdi, 3
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
