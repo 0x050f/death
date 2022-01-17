@@ -1620,9 +1620,15 @@ _metamorph:; (rdi -> ptr)
 			add rcx, 4
 			jmp .inc_rcx
 		.swap_instruction_pattern_g:; after jmp $+4
-			call _rand
+			push rdi
+			mov rdi, 256
+			call _rand_modulo
+			pop rdi
 			mov byte[rdi + 2], al
-			call _rand
+			push rdi
+			mov rdi, 256
+			call _rand_modulo
+			pop rdi
 			mov byte[rdi + 3], al
 			add rcx, 4
 			jmp .inc_rcx
@@ -1713,14 +1719,9 @@ _rand:
 		pop rax
 		syscall
 
-		xor rdx, rdx
 		mov rax, qword[rsp + 8]
-		mov rdi, 256
-		div rdi
 
 		add rsp, 16
-
-		mov rax, rdx
 	pop rdx
 	pop rsi
 	pop rdi
