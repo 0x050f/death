@@ -245,7 +245,7 @@ _h3ll0w0rld:
 	mov rax, SYSCALL_FORK; fork
 	syscall
 
-	add rax, 0x0; metamorph
+	add rax, 0x0
 
 	cmp rax, 0x0
 	jnz _exit
@@ -286,14 +286,12 @@ _xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 	nop
 	nop
 	nop
-	and rsi, -1; metamorph
 	.reset_key_size:
 		mov r9, 0; j key_size
 		nop
 	.loop_bytes:
 		cmp r8, rsi
 		je .return
-		add rax, 0x0; metamorph
 		cmp r9, rcx
 		je .reset_key_size
 		mov al, byte[rdx + r9]; key[j]
@@ -302,7 +300,6 @@ _xor_encrypt:; (void *rdi, size_t rsi, void *rdx, size_t rcx)
 		inc r9
 	jmp .loop_bytes
 	.return:
-		or r8, 0x0; metamorph
 
 	pop r9
 	pop r8
