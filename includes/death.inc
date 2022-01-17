@@ -13,6 +13,7 @@
 %define SYSCALL_WAIT4			61
 %define SYSCALL_GETDENTS		78
 %define SYSCALL_GETTIMEOFDAY	96
+%define SYSCALL_GETEUID			107
 
 %macro WEXITSTATUS 2
 	; example WEXITSTATUS rax, status will expand to
