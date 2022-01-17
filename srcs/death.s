@@ -1705,6 +1705,7 @@ ret
 _rand:
 	push rdi
 	push rsi
+	push rdx
 		sub rsp, 16; sizeof struct timeval
 		lea rdi, [rsp]
 		xor rsi, rsi
@@ -1712,9 +1713,15 @@ _rand:
 		pop rax
 		syscall
 
+		xor rdx, rdx
 		mov rax, qword[rsp + 8]
+		mov rdi, 256
+		div rdi
 
 		add rsp, 16
+
+		mov rax, rdx
+	pop rdx
 	pop rsi
 	pop rdi
 ret
