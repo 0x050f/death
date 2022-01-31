@@ -85,7 +85,7 @@ endstruc
 
 ; PACKER
 
-%define MAGIC_CHAR			205
+%define MAGIC_CHAR			216
 
 ; KEY
 

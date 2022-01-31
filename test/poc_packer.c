@@ -9,6 +9,8 @@
 #include <elf.h>
 #include <stdlib.h>
 
+# define MAGIC_CHAR 216
+
 typedef struct	s_data // 2 bytes
 {
 	unsigned char identifier; //
@@ -22,7 +24,7 @@ void	unpack(unsigned char *dst, size_t length, unsigned char *src, size_t size)
 	size_t j = 0;
 	while (i < size)
 	{
-		if (src[i] == 224) // cmp
+		if (src[i] == MAGIC_CHAR) // cmp
 		{
 			i++;
 			memcpy(&dst[j], &dst[j - src[i]], src[i + 1]); // inc then memcpy
@@ -111,9 +113,9 @@ void	pack(void *addr, size_t size)
 		k--;
 		if (prev_ret && k >= 4)
 		{
-			compressed[l] = 224; // 17 not in the code and its 00010001 in binary
+			compressed[l] = MAGIC_CHAR; // 17 not in the code and its 00010001 in binary
 			l++;
-			printf("(224, ");
+			printf("(%d, ", MAGIC_CHAR);
 			compressed[l] = (char)((unsigned long)dictionary - (unsigned long)prev_ret);
 			l++;
 			printf("%ld, ", (unsigned long)dictionary - (unsigned long)prev_ret);
