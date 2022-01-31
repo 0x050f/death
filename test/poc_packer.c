@@ -9,7 +9,7 @@
 #include <elf.h>
 #include <stdlib.h>
 
-# define MAGIC_CHAR 216
+# define MAGIC_CHAR 220
 
 typedef struct	s_data // 2 bytes
 {
