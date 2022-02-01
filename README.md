@@ -16,6 +16,10 @@ objdump -b binary -D /tmp/test/ls -m i386:x86-64 > ls && objdump -b binary -D /t
 + Death will pack a part of his code when executing on host using a LZSS compression and depack itself to copy the packed part on the infected binary
 
 ## Demo
+fsociety mode infection:
+![alt text](https://raw.githubusercontent.com/y3ll0w42/death/main/img/demo1.png)
+Try running the debugger on it:
+![alt text](https://raw.githubusercontent.com/y3ll0w42/death/main/img/demo2.png)
 
 ## Compilation
 
